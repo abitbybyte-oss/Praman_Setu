@@ -281,8 +281,7 @@ json('4-forged-signature.json', forged);
 json('5-record-deleted.json', removed);
 json('6-with-void.json', withVoid);
 json('registry.json', registry);
-writeFileSync(join(out, '7-qr-code.txt'), formatQrPayload(chain[1]) + '
-');
+writeFileSync(join(out, '7-qr-code.txt'), `${formatQrPayload(chain[1])}\n`);
 writeFileSync(
   join(out, 'README.txt'),
   [
