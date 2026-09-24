@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { S, when } from '@/src/i18n';
+import { demoTiming, setDemoTiming } from '@/src/services/demo';
 import { auditLedger, rebuildIndex, type AuditRow } from '@/src/services/ledger';
 import { pingServer, registerDevice, registration, serverUrl, setServerUrl, type Registration } from '@/src/services/registry';
 import { Button, C, Field, Note, Panel, Row, Screen } from '@/src/ui/kit';
@@ -17,6 +18,7 @@ export default function SettingsScreen() {
   const [busy, setBusy] = useState<string | null>(null);
   const [auditResult, setAuditResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [rows, setRows] = useState<AuditRow[]>([]);
+  const [demo, setDemo] = useState(demoTiming());
 
   const save = async () => {
     setBusy('save');
@@ -74,6 +76,18 @@ export default function SettingsScreen() {
         />
         <Button label={S.settings.saveServer} onPress={save} busy={busy === 'save'} disabled={!url.trim()} />
         {ping ? <Note>{ping}</Note> : null}
+      </Panel>
+
+      <Panel title={S.settings.demoTitle}>
+        <Note>{S.settings.demoHelp}</Note>
+        <Button
+          label={demo ? S.settings.demoOn : S.settings.demoOff}
+          kind="secondary"
+          onPress={() => {
+            setDemoTiming(!demo);
+            setDemo(!demo);
+          }}
+        />
       </Panel>
 
       <Panel title={S.settings.registration} tone={tone}>

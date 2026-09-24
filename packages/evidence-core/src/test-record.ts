@@ -82,10 +82,13 @@ export const testRecordSchema = z
         display_name: z.string(),
         entry: z.enum(["MANUAL", "QR"]),
         kit_id: z.string().nullable(),
+        manufacturer: z.string().nullable(),
         batch: z.string().nullable(),
         mfg_date: z.string().nullable(),
         expiry_date: z.string().nullable(),
         status: z.enum(["VALID", "EXPIRED", "NOT_YET_VALID", "UNRECOGNISED", "NOT_CHECKED"]),
+        /** SHA-256 of the exact scanned QR payload (KIT-03). */
+        qr_sha256: hex64.nullable(),
       })
       .strict(),
     timing: z
@@ -195,6 +198,14 @@ export const testRecordSchema = z
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "a preliminary outcome needs a measurement on a VALID card" });
     if (r.evidence_image && !r.captures.some((k) => k.sha256 === r.evidence_image!.sha256 && k.accepted))
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "evidence_image must be an accepted capture" });
+    if (r.kit.entry === "QR" && (r.kit.status !== "VALID" || !r.kit.qr_sha256))
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "only a VALID scanned kit can be used (KIT-05)" });
+    if (r.kit.entry === "MANUAL" && r.kit.status !== "NOT_CHECKED")
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "a manually selected kit has status NOT_CHECKED" });
+    if (r.timing.timer !== "NONE" && !r.timing.timer_start)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "a timed test needs timer_start" });
+    if (r.timing.in_window === false && !c.inconclusive_reasons.includes("OUTSIDE_REACTION_WINDOW"))
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "a capture outside the reaction window must be Inconclusive (TMR-05)" });
     if (r.retake_count !== Math.max(0, r.captures.length - 1))
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "retake_count must equal captures - 1" });
   });

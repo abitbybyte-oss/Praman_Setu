@@ -62,6 +62,8 @@ export interface KitProfile {
 export interface ReferenceDbBody {
   refdb_version: string;
   simulated: true;
+  /** Kit QR manufacturers the agency accepts (PRD §8.3). */
+  manufacturers?: string[];
   cards: Record<string, CardProfile>;
   kits: Record<string, KitProfile>;
   thresholds: Record<string, number>;

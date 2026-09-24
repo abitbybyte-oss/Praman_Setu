@@ -6,6 +6,8 @@ import type { Operator } from '../services/auth';
 import type { CardResult, SampleResult } from '../services/measure';
 import { currentCapture, guards, type CaptureEntry, type Draft, type EndedEarly } from './draft';
 import { deleteDraft, saveDraft } from './persist';
+import type { KitScan } from '../services/kitqr';
+import type { ReactionTimer } from './timer';
 
 export { currentCapture, guards, type CaptureEntry, type Draft, type EndedEarly };
 
@@ -18,11 +20,16 @@ export { currentCapture, guards, type CaptureEntry, type Draft, type EndedEarly 
 interface State {
   operator: Operator | null;
   draft: Draft | null;
+  /** KIT-03: result of the last kit QR scan, consumed by the kit screen. */
+  pendingKit: KitScan | null;
+  setPendingKit(k: KitScan | null): void;
   /** KIT-02: case ID and witness pre-filled on the next test. */
   lastCase: { caseId: string | null; witness: string | null };
   login(op: Operator): void;
   logout(): void;
-  startTest(kitType: string, caseId: string | null, witness: string | null): void;
+  startTest(kitType: string, caseId: string | null, witness: string | null, kitScan: KitScan | null): void;
+  /** TMR-02: record START TIMER once; it cannot be restarted for the same test. */
+  setTimer(t: ReactionTimer): void;
   addCapture(c: Omit<CaptureEntry, 'n'>): CaptureEntry;
   /** Retake: the current accepted capture stays in the record, marked rejected. */
   rejectCurrent(reason: string): void;
@@ -38,12 +45,14 @@ interface State {
 export const useSession = create<State>((set, get) => ({
   operator: null,
   draft: null,
+  pendingKit: null,
+  setPendingKit: (pendingKit) => set({ pendingKit }),
   lastCase: { caseId: null, witness: null },
 
   login: (operator) => set({ operator }),
   logout: () => set({ operator: null, draft: null }),
 
-  startTest: (kitType, caseId, witness) => {
+  startTest: (kitType, caseId, witness, kitScan) => {
     const operator = get().operator;
     if (!operator) throw new Error('sign in first');
     set({
@@ -53,6 +62,8 @@ export const useSession = create<State>((set, get) => ({
         startedAt: new Date().toISOString(),
         operator,
         kitType,
+        kitScan,
+        timer: null,
         caseId,
         witness,
         captures: [],
@@ -96,6 +107,12 @@ export const useSession = create<State>((set, get) => ({
     const d = requireDraft(get().draft);
     if (!guards.cardValid(d)) throw new Error('measure the sample only after a VALID card');
     set({ draft: { ...d, roi, sample, endedEarly: null } });
+  },
+
+  setTimer: (timer) => {
+    const d = requireDraft(get().draft);
+    if (d.timer) return;
+    set({ draft: { ...d, timer } });
   },
 
   endEarly: (endedEarly) => set({ draft: { ...requireDraft(get().draft), endedEarly } }),

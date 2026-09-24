@@ -1,6 +1,7 @@
 {
   "refdb_version": "2026.09-demo-1",
   "simulated": true,
+  "manufacturers": ["Demo Labs"],
   "cards": {
     "FDTC-CARD-1": {
       "patches": [

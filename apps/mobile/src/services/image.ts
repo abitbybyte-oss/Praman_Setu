@@ -1,5 +1,6 @@
 import { AlphaType, ColorType, Skia, type SkImage } from '@shopify/react-native-skia';
 import { correctImage, type RgbaImage } from '@fdtc/color-core';
+import jsQR from 'jsqr';
 
 /** Working copy (ARCHITECTURE §6.1): Skia decodes the original JPEG (applying
  * its orientation), downscales the long side to 1600 px and reads RGBA pixels.
@@ -72,4 +73,24 @@ export function correctedView(wc: WorkingCopy, matrix: number[]): WorkingCopy {
   const view = { ...wc, skImage: image ?? wc.skImage };
   correctedCache = { key, view };
   return view;
+}
+
+/** KIT-03: decode a QR code from a photo in pure JS (jsQR). vision-camera v5's
+ * live code scanner is iOS-only, and this avoids a native rebuild. The photo
+ * is a throwaway, not evidence: only the payload's hash is recorded. */
+export async function decodeQrFromFile(uri: string, longSide = 1000): Promise<string | null> {
+  const data = await Skia.Data.fromURI(uri);
+  const original = Skia.Image.MakeImageFromEncoded(data);
+  if (!original) return null;
+  const k = Math.min(1, longSide / Math.max(original.width(), original.height()));
+  const w = Math.max(1, Math.round(original.width() * k));
+  const h = Math.max(1, Math.round(original.height() * k));
+  const surface = Skia.Surface.MakeOffscreen(w, h);
+  if (!surface) return null;
+  surface.getCanvas().drawImageRect(original, Skia.XYWHRect(0, 0, original.width(), original.height()), Skia.XYWHRect(0, 0, w, h), Skia.Paint());
+  surface.flush();
+  const px = surface.makeImageSnapshot().readPixels(0, 0, { width: w, height: h, colorType: ColorType.RGBA_8888, alphaType: AlphaType.Unpremul });
+  if (!px) return null;
+  const found = jsQR(new Uint8ClampedArray(px.buffer, px.byteOffset, px.byteLength), w, h, { inversionAttempts: 'dontInvert' });
+  return found?.data ?? null;
 }

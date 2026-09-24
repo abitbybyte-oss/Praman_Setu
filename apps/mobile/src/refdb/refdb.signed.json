@@ -1,6 +1,9 @@
 {
   "refdb_version": "2026.09-demo-1",
   "simulated": true,
+  "manufacturers": [
+    "Demo Labs"
+  ],
   "cards": {
     "FDTC-CARD-1": {
       "patches": [
@@ -330,6 +333,6 @@
   "signature": {
     "alg": "ES256",
     "key_id": "agency_refdb_2026",
-    "value": "LTTRtG4uOxQ_qgP29ERaZ4OtdssJBgv6kHF7s6yE9opI0wWNXvYcBN7FAY4VDnYqUPkG8mrM2wUW3b4KW62NvQ"
+    "value": "Pc2guld1mm_y-Z99EPLBrjXi2rlb8GvCazUd-R3SpMcSK2ffD4G5NX3hIbILiyjTHQFnbG75UIkdtffCpqjqbw"
   }
 }

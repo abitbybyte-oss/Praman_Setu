@@ -27,7 +27,9 @@ import {
 import { blurCheck, calibrateCard, defaultRoiRadius, measureSample, snapCorner } from '../src/services/measure';
 import { buildTestRecord } from '../src/services/recordBuilder';
 import { cardReference, DEFAULT_CARD, kit, loadRefdb } from '../src/services/refdb';
+import { checkKitQr, formatKitQr } from '../src/services/kitqr';
 import type { Draft } from '../src/workflow/draft';
+import { startTimer } from '../src/workflow/timer';
 
 const W = 1200;
 const H = 1600;
@@ -109,6 +111,8 @@ function draftFor(kitType: string): Draft {
     startedAt: new Date().toISOString(),
     operator: { badge_id: '1001', name: 'Demo Officer', role: 'OFFICER' },
     kitType,
+    kitScan: null,
+    timer: null,
     caseId: 'FIR-DEMO-1',
     witness: null,
     captures: [],
@@ -177,11 +181,19 @@ function save(label: string, d: Draft, expectOutcome: string) {
   );
 }
 
-function fullRun(label: string, kitType: string, sample: Lab, expect: string, tapError: Point = [0, 0]) {
+function fullRun(label: string, kitType: string, sample: Lab, expect: string, tapError: Point = [0, 0], timed?: { elapsed_s: number }) {
   const t0 = Date.now();
   const { img, markers, roi } = render(sample);
   const tRender = Date.now();
   const d = draftFor(kitType);
+  if (timed) {
+    // Scanned VALID kit + reaction timer, captured `elapsed_s` after START TIMER.
+    d.kitScan = checkKitQr(
+      formatKitQr({ kit_id: 'SIMKIT-000871', kit_type: kitType, manufacturer: 'Demo Labs', batch: 'B2026-07', mfg_date: '2026-01-10', expiry_date: '2099-01-10' }),
+      refdb.db
+    );
+    d.timer = startTimer(kit(kitType).protocol, false, new Date(Date.now() - timed.elapsed_s * 1000));
+  }
   const blur = blurCheck(img);
   d.captures.push({
     n: 1,
@@ -192,6 +204,7 @@ function fullRun(label: string, kitType: string, sample: Lab, expect: string, ta
     accepted: true,
     reject_reasons: [],
     laplacian_variance: blur.laplacian_variance,
+    elapsed_s: timed ? timed.elapsed_s : null,
   });
   const snapped = CORNER_ORDER.map((c) => snapCorner(img, [markers[c][0] + tapError[0], markers[c][1] + tapError[1]]));
   d.corners = Object.fromEntries(CORNER_ORDER.map((c, i) => [c, snapped[i].point])) as Record<CornerId, Point>;
@@ -212,12 +225,14 @@ function fullRun(label: string, kitType: string, sample: Lab, expect: string, ta
 fullRun('SIM-A positive colour, taps 28 px off', 'SIM-A', [47, 41, -23], 'PRELIMINARY_POSITIVE', [22, -18]);
 fullRun('SIM-A clear sample, taps 25 px off', 'SIM-A', [87, -1, 5], 'PRELIMINARY_NEGATIVE', [-15, 20]);
 fullRun('SIM-A out-of-range colour', 'SIM-A', [50, -40, 40], 'INCONCLUSIVE');
+fullRun('scanned kit + timer, captured at 150 s (in window)', 'SIM-A', [47, 41, -23], 'PRELIMINARY_POSITIVE', [0, 0], { elapsed_s: 150 });
+fullRun('scanned kit + timer, captured at 420 s (late)', 'SIM-A', [47, 41, -23], 'INCONCLUSIVE', [0, 0], { elapsed_s: 420 });
 
 {
   // Corners tapped in the wrong order → card invalid → officer ends the test.
   const { img, markers } = render([47, 41, -23]);
   const d = draftFor('SIM-B');
-  d.captures.push({ n: 1, uri: 'x', sha256: H64('b'), bytes: 2400000, taken_at: new Date().toISOString(), accepted: true, reject_reasons: [], laplacian_variance: 300 });
+  d.captures.push({ n: 1, uri: 'x', sha256: H64('b'), bytes: 2400000, taken_at: new Date().toISOString(), accepted: true, reject_reasons: [], laplacian_variance: 300, elapsed_s: null });
   const taps = { top_left: markers.top_left, top_right: markers.bottom_left, bottom_right: markers.bottom_right, bottom_left: markers.top_right };
   d.corners = taps;
   d.cornersSnapped = [true, true, true, true];
@@ -228,7 +243,7 @@ fullRun('SIM-A out-of-range colour', 'SIM-A', [50, -40, 40], 'INCONCLUSIVE');
 {
   // Blurry capture, officer ends instead of retaking: no accepted photo.
   const d = draftFor('SIM-C');
-  d.captures.push({ n: 1, uri: 'x', sha256: H64('c'), bytes: 2300000, taken_at: new Date().toISOString(), accepted: false, reject_reasons: ['IMAGE_BLURRY'], laplacian_variance: 12.3 });
+  d.captures.push({ n: 1, uri: 'x', sha256: H64('c'), bytes: 2300000, taken_at: new Date().toISOString(), accepted: false, reject_reasons: ['IMAGE_BLURRY'], laplacian_variance: 12.3, elapsed_s: null });
   d.endedEarly = { kind: 'HARD_GATE', reasons: ['IMAGE_BLURRY'] };
   save('blurry, ended on hard gate', d, 'INCONCLUSIVE');
 }

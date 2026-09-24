@@ -11,7 +11,8 @@
     "build:refdb": "npm run build --workspace @fdtc/refdb",
     "build:verify": "npm run build --workspace @fdtc/verify",
     "server": "npm run start --workspace @fdtc/mock-server",
-    "card": "tsx tools/demo/card/generate-card.mts"
+    "card": "tsx tools/demo/card/generate-card.mts",
+    "kits": "tsx tools/demo/kits/generate-kit-qrs.mts"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

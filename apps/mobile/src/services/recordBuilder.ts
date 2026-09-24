@@ -11,6 +11,7 @@ import type { KitProfile } from '@fdtc/refdb';
 import type { Operator } from './auth';
 import type { CaptureContext } from './context';
 import { currentCapture, type Draft } from '../workflow/draft';
+import { inWindow } from '../workflow/timer';
 
 /** Evidence builder (ARCHITECTURE §7.3, §7.4): draft → rounded fdtc.test/1
  * record. Pure (no React Native), so it is exercised in Node against the
@@ -20,14 +21,24 @@ const r = roundTo;
 const r2 = (v: number) => r(v, 2);
 const rXY = (v: number) => r(v, 1);
 
+/** TMR-07: timing of the accepted capture, or null when no timer was used. */
+export function captureTiming(d: Draft): { elapsed_s: number | null; in_window: boolean | null } {
+  const cap = currentCapture(d) ?? d.captures[d.captures.length - 1] ?? null;
+  if (!d.timer || !cap || cap.elapsed_s == null) return { elapsed_s: null, in_window: null };
+  return { elapsed_s: cap.elapsed_s, in_window: inWindow(d.timer, cap.elapsed_s) };
+}
+
 export function finalClassification(d: Draft): Classification {
+  // TMR-05: a capture after max_s forces Inconclusive, whatever the colour says.
+  const late: InconclusiveReason[] = captureTiming(d).in_window === false ? ['OUTSIDE_REACTION_WINDOW'] : [];
   if (d.endedEarly && (!d.sample || d.endedEarly.kind !== 'HARD_GATE')) {
-    return inconclusiveWithoutMeasurement(d.endedEarly.reasons);
+    return inconclusiveWithoutMeasurement([...d.endedEarly.reasons, ...late]);
   }
   const c = d.sample!.classification;
-  if (!d.endedEarly) return c;
-  // Ended on a hard gate after measuring (glare): keep the measurement, force Inconclusive.
-  const reasons = [...new Set<InconclusiveReason>([...d.endedEarly.reasons, ...c.inconclusive_reasons])];
+  const extra = [...(d.endedEarly?.reasons ?? []), ...late];
+  if (extra.length === 0) return c;
+  // Keep the measurement (nearest class, distances) but force Inconclusive.
+  const reasons = [...new Set<InconclusiveReason>([...extra, ...c.inconclusive_reasons])];
   return { ...c, outcome: 'INCONCLUSIVE', inconclusive_reasons: reasons, recommended_action: recommendedAction(reasons) };
 }
 
@@ -53,6 +64,7 @@ export function buildTestRecord(inp: BuildInputs, seq: number, prevHash: string 
   const cls = finalClassification(d);
   const card = d.card;
   const sample = d.sample;
+  const timing = captureTiming(d);
   return {
     schema: 'fdtc.test/1',
     record_type: 'TEST',
@@ -66,24 +78,39 @@ export function buildTestRecord(inp: BuildInputs, seq: number, prevHash: string 
     source: 'CAMERA',
     operator: { badge_id: operator.badge_id, role: operator.role, auth_method: 'PIN' },
     case: { case_id: d.caseId, witness_badge_id: d.witness },
-    kit: {
-      kit_type: d.kitType,
-      display_name: profile.display_name,
-      entry: 'MANUAL',
-      kit_id: null,
-      batch: null,
-      mfg_date: null,
-      expiry_date: null,
-      status: 'NOT_CHECKED',
-    },
+    kit: d.kitScan?.kit
+      ? {
+          kit_type: d.kitType,
+          display_name: profile.display_name,
+          entry: 'QR',
+          kit_id: d.kitScan.kit.kit_id,
+          manufacturer: d.kitScan.kit.manufacturer,
+          batch: d.kitScan.kit.batch,
+          mfg_date: d.kitScan.kit.mfg_date,
+          expiry_date: d.kitScan.kit.expiry_date,
+          status: d.kitScan.status,
+          qr_sha256: d.kitScan.qr_sha256,
+        }
+      : {
+          kit_type: d.kitType,
+          display_name: profile.display_name,
+          entry: 'MANUAL',
+          kit_id: null,
+          manufacturer: null,
+          batch: null,
+          mfg_date: null,
+          expiry_date: null,
+          status: 'NOT_CHECKED',
+          qr_sha256: null,
+        },
     timing: {
-      timer: 'NONE',
-      timer_start: null,
+      timer: d.timer?.mode ?? 'NONE',
+      timer_start: d.timer?.start ?? null,
       capture_time: cap?.taken_at ?? d.captures.at(-1)?.taken_at ?? null,
-      elapsed_s: null,
-      required_s: profile.protocol.required_s,
-      max_s: profile.protocol.max_s,
-      in_window: null,
+      elapsed_s: timing.elapsed_s == null ? null : r(timing.elapsed_s, 1),
+      required_s: d.timer?.required_s ?? profile.protocol.required_s,
+      max_s: d.timer?.max_s ?? profile.protocol.max_s,
+      in_window: timing.in_window,
     },
     captures: d.captures.map((c) => ({
       n: c.n,

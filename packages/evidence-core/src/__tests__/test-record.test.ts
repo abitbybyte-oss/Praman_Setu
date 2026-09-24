@@ -17,7 +17,7 @@ function valid(): TestRecord {
     source: "CAMERA",
     operator: { badge_id: "1001", role: "OFFICER", auth_method: "PIN" },
     case: { case_id: "FIR-0419-2026", witness_badge_id: null },
-    kit: { kit_type: "SIM-A", display_name: "Simulated Test A", entry: "MANUAL", kit_id: null, batch: null, mfg_date: null, expiry_date: null, status: "NOT_CHECKED" },
+    kit: { kit_type: "SIM-A", display_name: "Simulated Test A", entry: "MANUAL", kit_id: null, manufacturer: null, batch: null, mfg_date: null, expiry_date: null, status: "NOT_CHECKED", qr_sha256: null },
     timing: { timer: "NONE", timer_start: null, capture_time: "2026-09-22T10:13:21.870Z", elapsed_s: null, required_s: 120, max_s: 300, in_window: null },
     captures: [
       { n: 1, sha256: H("a"), bytes: 2841123, taken_at: "2026-09-22T10:12:00.000Z", accepted: false, reject_reasons: ["IMAGE_BLURRY"], quality_score: null, laplacian_variance: 21.4 },
@@ -102,6 +102,15 @@ describe("fdtc.test/1 schema", () => {
     const r = valid();
     r.retake_count = 0;
     expect(() => parseTestRecord(r)).toThrow(/retake_count/);
+  });
+
+  it("a scanned kit must be VALID; a late capture must be Inconclusive", () => {
+    const r = valid();
+    r.kit = { ...r.kit, entry: "QR", status: "EXPIRED", qr_sha256: H("e") };
+    expect(() => parseTestRecord(r)).toThrow(/VALID scanned kit/);
+    const late = valid();
+    late.timing = { ...late.timing, timer: "KIT_PROTOCOL", timer_start: "2026-09-22T10:00:00.000Z", elapsed_s: 400, in_window: false };
+    expect(() => parseTestRecord(late)).toThrow(/reaction window/);
   });
 
   it("rejects timestamps without milliseconds or Z", () => {
