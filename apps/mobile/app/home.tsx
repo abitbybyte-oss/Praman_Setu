@@ -1,11 +1,12 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Text } from 'react-native';
 
 import { getDeviceIdentity } from '@/src/adapters/keystore';
 import { S } from '@/src/i18n';
 import { auditChain, ledgerLength, listTests } from '@/src/services/ledger';
 import { loadRefdb } from '@/src/services/refdb';
+import { ensureRegistered, registration, type Registration } from '@/src/services/registry';
 import { Button, C, Field, Note, Panel, Screen } from '@/src/ui/kit';
 import { useSession } from '@/src/workflow/store';
 
@@ -16,6 +17,17 @@ export default function HomeScreen() {
   const [keyId, setKeyId] = useState('…');
   const [chain, setChain] = useState<{ ok: boolean | null; detail: string }>({ ok: null, detail: S.home.chainChecking });
   const [counts, setCounts] = useState({ records: 0, tests: 0 });
+  const [reg, setReg] = useState<Registration>(registration());
+
+  // SYN-01: each time Home is shown, try any pending registration (offline-safe).
+  useFocusEffect(
+    useCallback(() => {
+      if (!operator) return;
+      setReg(registration());
+      setCounts({ records: ledgerLength(), tests: listTests().length });
+      ensureRegistered(operator.badge_id).then(setReg);
+    }, [operator])
+  );
 
   useEffect(() => {
     if (!operator) {
@@ -52,6 +64,8 @@ export default function HomeScreen() {
         <Field label={S.home.signingKey} value={keyId} mono />
         <Field label={S.home.ledger} value={S.home.ledgerLine(counts.records, counts.tests, chain.ok === false ? S.home.chainBrokenShort : chain.detail)} />
         <Field label={S.home.refdb} value={`${refdb.version} · ${refdb.sha256.slice(0, 16)}…`} mono />
+        <Field label={S.home.registration} value={S.home.regShort[reg.status]} />
+        <Button label={S.home.settings} kind="ghost" onPress={() => router.push('/settings')} />
       </Panel>
 
       <Panel title={S.home.developer}>

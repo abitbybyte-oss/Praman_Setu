@@ -161,11 +161,25 @@ function renderCheck(check: Check): HTMLLIElement {
   return item;
 }
 
+/** VER-05: card status, quality, timing window and integrity flags. */
+function describeDetails(record: VerifyReport["records"][number]): string {
+  const d = record.details;
+  if (!d) return "";
+  const parts = [
+    d.kit ?? "",
+    d.card_status ? `card ${d.card_status}` : "no card",
+    d.quality ? `quality ${d.quality}` : "",
+    d.in_window === false ? "OUTSIDE reaction window" : d.in_window === true ? "in window" : "",
+    ...d.flags.map((f) => `⚠ ${f.replace(/_/g, " ")}`),
+  ];
+  return parts.filter(Boolean).join(" · ");
+}
+
 function renderRecords(report: VerifyReport): HTMLTableSectionElement {
   const body = document.createElement("tbody");
 
   const header = document.createElement("tr");
-  for (const heading of ["Seq", "Type", "Created", "Status", "Record hash"]) {
+  for (const heading of ["Seq", "Type", "Created", "Status", "Details", "Record hash"]) {
     const th = document.createElement("th");
     th.textContent = heading;
     header.append(th);
@@ -183,6 +197,7 @@ function renderRecords(report: VerifyReport): HTMLTableSectionElement {
         : record.voids
           ? `voids ${record.voids.slice(0, 8)}`
           : (record.outcome ?? "").replace(/_/g, " "),
+      describeDetails(record),
     ];
     for (const value of cells) {
       const td = document.createElement("td");

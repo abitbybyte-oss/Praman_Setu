@@ -79,7 +79,18 @@ export interface RecordSummary {
   voided: { by_badge: string | null; at: string | null; reason: string | null; void_record_id: string | null } | null;
   /** VOID records: the record they void. */
   voids: string | null;
+  /** VER-05, TEST records: card status, quality, timing window, integrity flags. */
+  details: {
+    kit: string | null;
+    card_status: string | null;
+    quality: string | null;
+    in_window: boolean | null;
+    flags: string[];
+  } | null;
 }
+
+/** Integrity flags that make a verdict "with warnings" (ARCHITECTURE §2 "flag, don't hide"). */
+const WARN_FLAGS = ["rooted", "mock_location", "clock_skew"] as const;
 
 export interface VerifyReport {
   verdict: Verdict;
@@ -135,6 +146,23 @@ function summarise(envelope: Envelope): RecordSummary {
     outcome: field((record.classification ?? {}) as LooseRecord, "outcome"),
     voided: null,
     voids: field((record.target ?? {}) as LooseRecord, "record_id"),
+    details: record.record_type === "TEST" ? testDetails(record) : null,
+  };
+}
+
+function testDetails(record: LooseRecord): NonNullable<RecordSummary["details"]> {
+  const integrity = (record.integrity ?? {}) as LooseRecord;
+  const calibration = (record.calibration ?? null) as LooseRecord | null;
+  const quality = (record.quality ?? null) as LooseRecord | null;
+  const timing = (record.timing ?? {}) as LooseRecord;
+  const kit = (record.kit ?? {}) as LooseRecord;
+  const flags = ["rooted", "mock_location", "clock_skew", "location_unavailable"].filter((f) => integrity[f] === true);
+  return {
+    kit: field(kit, "kit_type"),
+    card_status: calibration ? field(calibration, "card_status") : null,
+    quality: quality ? `${String(quality.score)} ${String(quality.band)}` : null,
+    in_window: typeof timing.in_window === "boolean" ? timing.in_window : null,
+    flags,
   };
 }
 
@@ -289,7 +317,26 @@ export function verifyBundle(input: VerifyInput): VerifyReport {
     });
   } else {
     const entry = fromRegistry.get(keyIds[0]);
-    checks.push({
+    // VER-03: a record created before its key was registered still verifies,
+    // but the registry cannot vouch for the key at that time.
+    const early = entry?.registered_at
+      ? records.filter((e) => {
+          // GENESIS is the registration request itself, so it always predates registration.
+          if ((e.record as LooseRecord).record_type === "GENESIS") return false;
+          const created = field(e.record as LooseRecord, "created_at");
+          return created !== null && e.signature.key_id === entry.key_id && created < entry.registered_at!;
+        })
+      : [];
+    if (early.length > 0) {
+      checks.push({
+        id: "SIGNER",
+        label: "Signer registered with the agency",
+        status: "WARN",
+        detail: `Key ${keyIds[0]} was registered at ${entry!.registered_at}, after ${early.length} record(s) in this file were created (seq ${early
+          .map((e) => String((e.record as LooseRecord).seq))
+          .join(", ")}). The signatures are valid, but the registry cannot vouch for the key before it was registered.`,
+      });
+    } else checks.push({
       id: "SIGNER",
       label: "Signer registered with the agency",
       status: "PASS",
@@ -450,6 +497,18 @@ export function verifyBundle(input: VerifyInput): VerifyReport {
   const summaries = records.map(summarise);
   const voidCheck = applyVoids(records, summaries);
   if (voidCheck) checks.push(voidCheck);
+
+  const flagged = summaries.filter((s) => s.details?.flags.some((f) => (WARN_FLAGS as readonly string[]).includes(f)));
+  if (flagged.length > 0) {
+    checks.push({
+      id: "FLAGS",
+      label: "Device integrity flags",
+      status: "WARN",
+      detail: `The device flagged ${flagged
+        .map((s) => `seq ${String(s.seq)} (${s.details!.flags.filter((f) => (WARN_FLAGS as readonly string[]).includes(f)).join(", ").replace(/_/g, " ")})`)
+        .join("; ")}. The records are intact, but these conditions weaken their weight as evidence.`,
+    });
+  }
 
   const hasFailure = checks.some((c) => c.status === "FAIL");
   const hasWarning = checks.some((c) => c.status === "WARN" || c.status === "SKIPPED");

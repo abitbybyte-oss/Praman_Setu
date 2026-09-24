@@ -1,12 +1,23 @@
 import * as Location from 'expo-location';
 import { roundTo, type TestRecord } from '@fdtc/evidence-core';
 
-/** Where and when (ARCHITECTURE §7.3 location/clock/integrity, §14).
+import { clockFromFix } from './clock';
+
+/** Where and when (ARCHITECTURE §7.3 location/clock/integrity, §13, §14).
  *
  * Location never blocks a test: if permission is denied or there is no fix in
- * time, the record says location_unavailable and the result screen shows it. */
+ * time, the record says location_unavailable and the result screen shows it.
+ * Integrity signals are flagged in the signed record; they never change the
+ * result ("flag, don't hide"). */
 
-let pending: Promise<Location.LocationObject | null> | null = null;
+interface Fix {
+  fix: Location.LocationObject;
+  /** Device wall clock and monotonic clock when the fix arrived. */
+  receivedAt: number;
+  receivedMono: number;
+}
+
+let pending: Promise<Fix | null> | null = null;
 
 /** Start a fix early (when the capture screen opens) so it is ready at save. */
 export function startLocationFix(): void {
@@ -15,7 +26,8 @@ export function startLocationFix(): void {
     try {
       const perm = await Location.requestForegroundPermissionsAsync();
       if (perm.status !== 'granted') return null;
-      return await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const fix = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      return { fix, receivedAt: Date.now(), receivedMono: performance.now() };
     } catch {
       return null;
     }
@@ -28,7 +40,6 @@ function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
 
 function isRooted(): boolean | null {
   try {
-    // Optional native module; absent in some builds.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const JailMonkey = require('jail-monkey').default as { isJailBroken(): boolean };
     return JailMonkey.isJailBroken();
@@ -45,9 +56,11 @@ export interface CaptureContext {
 
 export async function collectContext(): Promise<CaptureContext> {
   startLocationFix();
-  const fix = await withTimeout(pending!, 5000, null);
+  const got = await withTimeout(pending!, 5000, null);
   pending = null;
-  const now = new Date();
+  const now = Date.now();
+  const mono = performance.now();
+  const fix = got?.fix ?? null;
 
   const location: TestRecord['location'] = fix
     ? {
@@ -60,21 +73,31 @@ export async function collectContext(): Promise<CaptureContext> {
       }
     : null;
 
+  const clock = clockFromFix(now, mono, got ? { fixTime: got.fix.timestamp, receivedAt: got.receivedAt, receivedMono: got.receivedMono } : null);
+
   return {
     location,
     clock: {
-      device_time: now.toISOString(),
-      // GNSS time is not exposed separately on this stack; the fix time is in
-      // location.fix_time. Clock-skew detection is EVD-06 (Phase 2).
-      gnss_time: null,
-      skew_s: null,
-      monotonic_ms: Math.round(performance.now()),
+      device_time: new Date(now).toISOString(),
+      gnss_time: clock.gnss_time,
+      skew_s: clock.skew_s,
+      monotonic_ms: Math.round(mono),
     },
     integrity: {
       rooted: isRooted(),
       mock_location: location?.mocked ?? null,
-      clock_skew: null,
+      clock_skew: clock.clock_skew,
       location_unavailable: location === null,
     },
   };
+}
+
+/** Plain list of raised integrity flags, for display. */
+export function raisedFlags(i: TestRecord['integrity']): ('rooted' | 'mock_location' | 'clock_skew' | 'location_unavailable')[] {
+  const out: ('rooted' | 'mock_location' | 'clock_skew' | 'location_unavailable')[] = [];
+  if (i.rooted) out.push('rooted');
+  if (i.mock_location) out.push('mock_location');
+  if (i.clock_skew) out.push('clock_skew');
+  if (i.location_unavailable) out.push('location_unavailable');
+  return out;
 }

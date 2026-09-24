@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Text } from 'react-native';
 
 import { label, pct, S, when } from '@/src/i18n';
-import { collectContext, type CaptureContext } from '@/src/services/context';
+import { collectContext, raisedFlags, type CaptureContext } from '@/src/services/context';
 import { kit, loadRefdb } from '@/src/services/refdb';
 import { preview, saveTest } from '@/src/services/testRecord';
 import { Button, C, Field, Note, Panel, Row, Screen } from '@/src/ui/kit';
@@ -166,6 +166,17 @@ export default function ResultScreen() {
         <Field label={S.result.captures} value={S.result.capturesLine(draft.captures.length)} />
         <Field label={S.result.refdb} value={loadRefdb().version} />
       </Panel>
+
+      {ctx ? (
+        <Panel title={S.integrity.title} tone={raisedFlags(ctx.integrity).length ? 'warn' : undefined}>
+          {raisedFlags(ctx.integrity).length === 0 ? <Note>{S.integrity.none}</Note> : null}
+          {raisedFlags(ctx.integrity).map((f) => (
+            <Note key={f} tone="warn">• {S.integrity.flags[f]}</Note>
+          ))}
+          <Note>{S.integrity.clockLine(ctx.clock.skew_s === null ? null : String(ctx.clock.skew_s))}</Note>
+          <Note>{S.integrity.note}</Note>
+        </Panel>
+      ) : null}
       {error ? <Note tone="bad">{error}</Note> : null}
     </Screen>
   );

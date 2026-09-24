@@ -25,6 +25,7 @@ import {
 } from '@fdtc/evidence-core';
 
 import { MIGRATION_1 } from '../src/adapters/schema';
+import { clockFromFix } from '../src/services/clock';
 import { buildTestRecord } from '../src/services/recordBuilder';
 import { DEFAULT_CARD, kit, loadRefdb } from '../src/services/refdb';
 import type { Draft } from '../src/workflow/draft';
@@ -73,7 +74,7 @@ const chain: Envelope[] = [sealRecord(genesis as never, deviceKey, keyId) as Env
 const photo = new TextEncoder().encode(`\xff\xd8\xff\xe0 FDTC demo photo ${Date.now()} \xff\xd9`);
 const photoSha = sha256Hex(photo);
 
-function addTest(caseId: string, sha: string) {
+function addTest(caseId: string, sha: string, clockSkew = false) {
   const d: Draft = {
     recordId: crypto.randomUUID(),
     startedAt: new Date().toISOString(),
@@ -95,7 +96,7 @@ function addTest(caseId: string, sha: string) {
       ctx: {
         location: null,
         clock: { device_time: new Date().toISOString(), gnss_time: null, skew_s: null, monotonic_ms: 1 },
-        integrity: { rooted: false, mock_location: null, clock_skew: null, location_unavailable: true },
+        integrity: { rooted: false, mock_location: null, clock_skew: clockSkew, location_unavailable: true },
       },
       identity: { deviceId: genesis.device_id, keyId },
       refdb: { version: refdb.version, sha256: refdb.sha256 },
@@ -223,6 +224,35 @@ const withVoid = buildLedgerExport([...chain, sealRecord(voidRecord as never, de
   const bundle = buildLedgerExport([...chain, sealRecord(bad as never, deviceKey, keyId) as Envelope], genesis.device_id);
   const r = verifyBundle({ bundle, registry });
   expect('TC-40 VOID pointing at a different version of the record', r.verdict === 'FAILED' && check(r, 'VOIDS')?.status === 'FAIL', check(r, 'VOIDS')?.detail);
+}
+
+// ---- VER-03 / VER-05: late registration and integrity flags are warnings, not failures ------
+{
+  const late: KeyRegistry = { ...registry, keys: [{ ...registry.keys[0], registered_at: '2099-01-01T00:00:00.000Z' }] };
+  const r = verifyBundle({ bundle: clone(), registry: late });
+  expect('VER-03 records created before the key was registered → WARN', r.verdict === 'VERIFIED_WITH_WARNINGS' && check(r, 'SIGNER')?.status === 'WARN', check(r, 'SIGNER')?.detail);
+}
+{
+  addTest('FIR-DEMO-SKEW', sha256Hex(new TextEncoder().encode('skewed')), true);
+  const bundle = buildLedgerExport(chain.slice(0, 5), genesis.device_id);
+  const r = verifyBundle({ bundle, registry });
+  const flags = r.records.find((x) => x.seq === 4)?.details?.flags ?? [];
+  expect('VER-05 clock-skew flag shown and warned', r.verdict === 'VERIFIED_WITH_WARNINGS' && check(r, 'FLAGS')?.status === 'WARN' && flags.includes('clock_skew'), check(r, 'FLAGS')?.detail);
+  chain.pop();
+}
+
+// ---- EVD-06: clock-skew rule ---------------------------------------------------------------
+{
+  const now = Date.parse('2026-09-24T10:00:00.000Z');
+  const ok = clockFromFix(now, 1000, { fixTime: now - 2000, receivedAt: now, receivedMono: 900 });
+  const ahead = clockFromFix(now, 1000, { fixTime: now - 3_600_000, receivedAt: now, receivedMono: 900 });
+  const behind = clockFromFix(now, 1000, { fixTime: now + 300_000, receivedAt: now, receivedMono: 900 });
+  const stale = clockFromFix(now, 200_000, { fixTime: now - 3_600_000, receivedAt: now, receivedMono: 900 });
+  expect('EVD-06 clocks agree (2 s) → no skew flag', ok.clock_skew === false && ok.skew_s === 2);
+  expect('EVD-06 device clock 1 h ahead of GPS → clock_skew', ahead.clock_skew === true && ahead.skew_s === 3600);
+  expect('EVD-06 device clock 5 min behind GPS → clock_skew', behind.clock_skew === true && behind.skew_s === -300);
+  expect('EVD-06 stale fix → not judged (null, not false)', stale.clock_skew === null && stale.gnss_time === null);
+  expect('EVD-06 no fix → not judged', clockFromFix(now, 0, null).clock_skew === null);
 }
 
 // ---- Demo files for verify.html ------------------------------------------------------------

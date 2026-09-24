@@ -1,7 +1,7 @@
 /** Ledger schema DDL (ARCHITECTURE §8.1). Pure text, shared by the app and
  * the Node tamper check (TC-33). */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const MIGRATION_1 = `
 CREATE TABLE ledger (
@@ -70,5 +70,20 @@ CREATE TABLE audit_log (
   at         TEXT NOT NULL,
   event      TEXT NOT NULL,
   detail     TEXT
+);
+`;
+
+/** v2: key/value settings (server URL, registration state) and the
+ * crash-recovery draft (EVD-08). Neither is evidence. */
+export const MIGRATION_2 = `
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS test_draft (
+  id         INTEGER PRIMARY KEY CHECK (id = 1),
+  badge_id   TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  draft      TEXT NOT NULL
 );
 `;

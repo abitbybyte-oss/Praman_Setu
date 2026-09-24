@@ -9,6 +9,7 @@ import { getDeviceIdentity } from '@/src/adapters/keystore';
 import { label, pct, S, when } from '@/src/i18n';
 import { writeJsonFile } from '@/src/services/evidence';
 import { envelopeById, evidencePath, exportLedger, voidFor } from '@/src/services/ledger';
+import { raisedFlags } from '@/src/services/context';
 import { voidTest } from '@/src/services/void';
 import { useSession } from '@/src/workflow/store';
 import { Button, C, Field, Note, Panel, Row, Screen } from '@/src/ui/kit';
@@ -149,7 +150,13 @@ export default function RecordScreen() {
           label={S.result.location}
           value={loc ? S.result.locationLine(loc.lat, loc.lon, loc.accuracy_m == null ? '?' : String(loc.accuracy_m), loc.mocked === true) : S.record.unavailable}
         />
-        <Field label={S.record.integrityFlags} value={S.record.rooted(r.integrity.rooted == null ? S.record.unknown : String(r.integrity.rooted))} />
+        <Field
+          label={S.record.integrityFlags}
+          value={[
+            ...(raisedFlags(r.integrity).length ? raisedFlags(r.integrity).map((f) => S.integrity.flags[f]) : [S.integrity.none]),
+            S.integrity.clockLine(r.clock.skew_s === null ? null : String(r.clock.skew_s)),
+          ].join('\n')}
+        />
         <Field label={S.result.refdb} value={`${r.reference_db.version} · ${r.reference_db.sha256.slice(0, 16)}…`} mono />
       </Panel>
       <Note>{S.record.verifyHint}</Note>

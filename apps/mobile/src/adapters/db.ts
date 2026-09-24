@@ -1,6 +1,6 @@
 import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
 
-import { MIGRATION_1, SCHEMA_VERSION } from './schema';
+import { MIGRATION_1, MIGRATION_2, SCHEMA_VERSION } from './schema';
 
 /** Local storage (ARCHITECTURE §8.1).
  *
@@ -16,9 +16,11 @@ export function getDb(): SQLiteDatabase {
   const opened = openDatabaseSync('fdtc.db');
   opened.execSync('PRAGMA journal_mode = WAL;');
   const row = opened.getFirstSync<{ user_version: number }>('PRAGMA user_version');
-  if ((row?.user_version ?? 0) < 1) {
+  const version = row?.user_version ?? 0;
+  const steps = [MIGRATION_1, MIGRATION_2];
+  if (version < SCHEMA_VERSION) {
     opened.withTransactionSync(() => {
-      opened.execSync(MIGRATION_1);
+      for (let v = version; v < SCHEMA_VERSION; v++) opened.execSync(steps[v]);
       opened.execSync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
     });
   }
@@ -28,4 +30,13 @@ export function getDb(): SQLiteDatabase {
 
 export function audit(event: string, detail?: string): void {
   getDb().runSync('INSERT INTO audit_log (at, event, detail) VALUES (?, ?, ?)', new Date().toISOString(), event, detail ?? null);
+}
+
+export function getSetting(key: string): string | null {
+  return getDb().getFirstSync<{ value: string }>('SELECT value FROM settings WHERE key = ?', key)?.value ?? null;
+}
+
+export function setSetting(key: string, value: string | null): void {
+  if (value === null) getDb().runSync('DELETE FROM settings WHERE key = ?', key);
+  else getDb().runSync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', key, value);
 }
