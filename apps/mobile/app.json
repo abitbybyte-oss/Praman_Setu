@@ -50,6 +50,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "029659f9-1aa8-435f-adcd-2187f4b2bcd6"
+      }
+    },
+    "owner": "bitbybyte"
   }
 }
