@@ -17,3 +17,4 @@ android/.gradle/
 android/local.properties
 ios/Pods/
 *.log
+.scratch/
