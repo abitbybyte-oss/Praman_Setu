@@ -168,3 +168,141 @@ export function sampleCard(
   for (const p of patches) samples[p.id] = samplePatch(img, p.centre[0], p.centre[1], p.window, madMax);
   return { corners, homography, patches, samples };
 }
+
+export interface MarkerSnap {
+  point: Point;
+  /** False when no clean dark blob was found; `point` is then the raw tap. */
+  snapped: boolean;
+  area_px: number;
+}
+
+/** Snap a finger tap onto the centre of the nearest dark corner marker.
+ *
+ * A fingertip covers ~30 px of a 1600 px working copy, which is too coarse for
+ * the homography. Within `radius` of the tap: Otsu-threshold the grey levels,
+ * flood-fill the dark blob closest to the tap and return its centroid. Blobs
+ * that touch the search window's edge (a dark table, a shadow) are rejected. */
+export function snapMarker(img: RgbaImage, tap: Point, radius: number): MarkerSnap {
+  const none: MarkerSnap = { point: tap, snapped: false, area_px: 0 };
+  let centre = tap;
+  // Up to three windows: the blob may be clipped by a window centred on an
+  // imprecise tap, so re-centre on what was found and look again.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    let clipped: Point | null = null;
+    for (const darker of [0, 0.5]) {
+      const r = analyseWindow(img, centre, tap, radius, darker);
+      if (r.kind === "ok") {
+        if (Math.hypot(r.point[0] - tap[0], r.point[1] - tap[1]) > radius * 1.5) return none;
+        return { point: r.point, snapped: true, area_px: r.area };
+      }
+      if (r.kind === "edge") clipped = r.point;
+    }
+    if (!clipped) return none;
+    centre = clipped;
+  }
+  return none;
+}
+
+type WindowResult = { kind: "ok" | "edge"; point: Point; area: number } | { kind: "none" };
+
+/** Otsu-threshold a square window, flood-fill the dark blob nearest `tap`.
+ * `darker` in [0,1) moves the threshold toward the darkest level, which
+ * separates a black marker from a merely dark background. */
+function analyseWindow(img: RgbaImage, centre: Point, tap: Point, radius: number, darker: number): WindowResult {
+  const r = Math.max(4, Math.round(radius));
+  const x0 = Math.max(0, Math.round(centre[0]) - r);
+  const y0 = Math.max(0, Math.round(centre[1]) - r);
+  const x1 = Math.min(img.width - 1, Math.round(centre[0]) + r);
+  const y1 = Math.min(img.height - 1, Math.round(centre[1]) + r);
+  const w = x1 - x0 + 1;
+  const h = y1 - y0 + 1;
+  if (w < 3 || h < 3) return { kind: "none" };
+
+  const g = new Float32Array(w * h);
+  const hist = new Array<number>(256).fill(0);
+  let lo = 255;
+  let hi = 0;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const i = ((y0 + y) * img.width + (x0 + x)) * 4;
+      const v = 0.299 * img.data[i] + 0.587 * img.data[i + 1] + 0.114 * img.data[i + 2];
+      g[y * w + x] = v;
+      hist[Math.min(255, Math.round(v))]++;
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    }
+  // A window with no real contrast has no marker in it.
+  if (hi - lo < 50) return { kind: "none" };
+
+  const total = w * h;
+  let sumAll = 0;
+  for (let t = 0; t < 256; t++) sumAll += t * hist[t];
+  let wB = 0;
+  let sumB = 0;
+  let best = 0;
+  let otsu = 128;
+  for (let t = 0; t < 256; t++) {
+    wB += hist[t];
+    if (wB === 0) continue;
+    const wF = total - wB;
+    if (wF === 0) break;
+    sumB += t * hist[t];
+    const mB = sumB / wB;
+    const mF = (sumAll - sumB) / wF;
+    const between = wB * wF * (mB - mF) * (mB - mF);
+    if (between > best) {
+      best = between;
+      otsu = t;
+    }
+  }
+  const threshold = otsu - (otsu - lo) * darker;
+
+  const tx = tap[0] - x0;
+  const ty = tap[1] - y0;
+  let seed = -1;
+  let seedD = Infinity;
+  for (let k = 0; k < total; k++) {
+    if (g[k] > threshold) continue;
+    const d = (k % w - tx) ** 2 + (Math.floor(k / w) - ty) ** 2;
+    if (d < seedD) {
+      seedD = d;
+      seed = k;
+    }
+  }
+  if (seed < 0) return { kind: "none" };
+
+  const seen = new Uint8Array(total);
+  const stack = [seed];
+  seen[seed] = 1;
+  let n = 0;
+  let touchesEdge = false;
+  let minX = w;
+  let maxX = 0;
+  let minY = h;
+  let maxY = 0;
+  while (stack.length) {
+    const k = stack.pop()!;
+    const x = k % w;
+    const y = (k - x) / w;
+    n++;
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+    if (x === 0 || y === 0 || x === w - 1 || y === h - 1) touchesEdge = true;
+    const next = [x > 0 ? k - 1 : -1, x < w - 1 ? k + 1 : -1, k - w, k + w];
+    for (const nk of next) {
+      if (nk < 0 || nk >= total || seen[nk] || g[nk] > threshold) continue;
+      seen[nk] = 1;
+      stack.push(nk);
+    }
+  }
+  // Bounding-box centre, not the pixel centroid: the white centre dot leaves a
+  // hole that the box ignores, and the disc is symmetric.
+  const point: Point = [x0 + (minX + maxX) / 2, y0 + (minY + maxY) / 2];
+  if (touchesEdge) return { kind: "edge", point, area: n };
+  const bw = maxX - minX + 1;
+  const bh = maxY - minY + 1;
+  if (n < 12 || bw / bh < 0.4 || bw / bh > 2.5) return { kind: "none" };
+  return { kind: "ok", point, area: n };
+}

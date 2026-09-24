@@ -10,6 +10,7 @@ import {
   homographyFrom4,
   locatePatches,
   sampleCard,
+  snapMarker,
   type CardLayout,
   type CornerId,
   type Point,
@@ -173,5 +174,36 @@ describe("printed card end to end", () => {
     for (const p of CARD.patches) expect(cal.residuals_de00[p.id]).toBeLessThan(1.5);
     const white: Lab = CARD.patches[0].lab;
     expect(white[0]).toBe(95);
+  });
+});
+
+describe("corner marker snap", () => {
+  const { img, toImg } = renderCard({ cast: WARM_CAST, noise: 4 });
+  const truth = trueTaps(toImg);
+
+  it.each([
+    [0, 0],
+    [18, -12],
+    [-20, 15],
+  ])("snaps a tap off by (%i, %i) px to the marker centre within 1.5 px", (dx, dy) => {
+    for (const id of CORNER_ORDER) {
+      const [x, y] = truth[id];
+      const s = snapMarker(img, [x + dx, y + dy], 40);
+      expect(s.snapped).toBe(true);
+      expect(Math.hypot(s.point[0] - x, s.point[1] - y)).toBeLessThan(1.5);
+    }
+  });
+
+  it("does not snap in a flat area", () => {
+    const s = snapMarker(img, [400, 30], 20);
+    expect(s.snapped).toBe(false);
+    expect(s.point).toEqual([400, 30]);
+  });
+
+  it("snapped taps 25 px off still calibrate VALID", () => {
+    const taps = {} as Record<CornerId, Point>;
+    for (const id of CORNER_ORDER) taps[id] = snapMarker(img, [truth[id][0] + 25, truth[id][1] - 20], 45).point;
+    const cal = calibrate(sampleCard(img, LAYOUT, taps).samples, REF, img);
+    expect(cal.card_status).toBe("VALID");
   });
 });
