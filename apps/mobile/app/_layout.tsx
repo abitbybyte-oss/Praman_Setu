@@ -9,7 +9,8 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { getDb } from '@/src/adapters/db';
 import { seedOperators } from '@/src/services/auth';
 import { ensureGenesis } from '@/src/services/ledger';
-import { loadRefdb } from '@/src/services/refdb';
+import { S } from '@/src/i18n';
+import { loadRefdb, refdbFailure } from '@/src/services/refdb';
 import { C } from '@/src/ui/kit';
 import { SimulatedBanner } from '@/src/ui/SimulatedBanner';
 
@@ -20,21 +21,22 @@ import { SimulatedBanner } from '@/src/ui/SimulatedBanner';
 type Boot = { state: 'loading'; step: string } | { state: 'ready' } | { state: 'error'; message: string };
 
 export default function RootLayout() {
-  const [boot, setBoot] = useState<Boot>({ state: 'loading', step: 'Starting…' });
+  const [boot, setBoot] = useState<Boot>({ state: 'loading', step: S.boot.starting });
 
   useEffect(() => {
     (async () => {
       try {
-        setBoot({ state: 'loading', step: 'Verifying reference data…' });
+        setBoot({ state: 'loading', step: S.boot.verifyingRefdb });
         loadRefdb();
-        setBoot({ state: 'loading', step: 'Opening evidence ledger…' });
+        setBoot({ state: 'loading', step: S.boot.openingLedger });
         getDb();
         await ensureGenesis();
-        setBoot({ state: 'loading', step: 'Preparing operator directory…' });
+        setBoot({ state: 'loading', step: S.boot.operators });
         await seedOperators();
         setBoot({ state: 'ready' });
       } catch (error) {
-        setBoot({ state: 'error', message: error instanceof Error ? error.message : String(error) });
+        const refdb = refdbFailure();
+        setBoot({ state: 'error', message: refdb ? S.boot.refdbFailed(refdb) : error instanceof Error ? error.message : String(error) });
       }
     })();
   }, []);
@@ -56,7 +58,7 @@ export default function RootLayout() {
               </>
             ) : (
               <>
-                <Text style={styles.errorTitle}>Tests are blocked</Text>
+                <Text style={styles.errorTitle}>{S.boot.blocked}</Text>
                 <Text style={styles.text}>{boot.message}</Text>
               </>
             )}

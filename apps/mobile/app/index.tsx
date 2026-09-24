@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput } from 'react-native';
 
+import { S } from '@/src/i18n';
 import { DEMO_OPERATORS, login } from '@/src/services/auth';
 import { Button, C, Note, Panel, Screen } from '@/src/ui/kit';
 import { useSession } from '@/src/workflow/store';
@@ -23,31 +24,48 @@ export default function LoginScreen() {
       setPin('');
       // AUTH-02: officers go to Home; supervisors to the record list (review is P2).
       router.replace(op.role === 'SUPERVISOR' ? '/history' : '/home');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch {
+      setError(S.login.wrong);
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Screen title="Praman Setu — sign in" back={false}>
-      <Text style={styles.heading}>Field Drug Test Companion</Text>
-      <Note>Prototype. Presumptive field result only — never a laboratory confirmation.</Note>
+    <Screen title={S.login.title} back={false}>
+      <Text style={styles.heading}>{S.app.tagline}</Text>
+      <Note>{S.app.presumptive}</Note>
 
       <Panel>
-        <Text style={styles.label}>Badge ID</Text>
-        <TextInput style={styles.input} value={badge} onChangeText={setBadge} keyboardType="number-pad" autoCorrect={false} placeholder="e.g. 1001" placeholderTextColor={C.dim} />
-        <Text style={styles.label}>PIN</Text>
-        <TextInput style={styles.input} value={pin} onChangeText={setPin} keyboardType="number-pad" secureTextEntry placeholder="••••" placeholderTextColor={C.dim} onSubmitEditing={submit} />
+        <Text style={styles.label}>{S.login.badge}</Text>
+        <TextInput
+          style={styles.input}
+          value={badge}
+          onChangeText={setBadge}
+          keyboardType="number-pad"
+          autoCorrect={false}
+          placeholder={S.login.badgePlaceholder}
+          placeholderTextColor={C.dim}
+        />
+        <Text style={styles.label}>{S.login.pin}</Text>
+        <TextInput
+          style={styles.input}
+          value={pin}
+          onChangeText={setPin}
+          keyboardType="number-pad"
+          secureTextEntry
+          placeholder="••••"
+          placeholderTextColor={C.dim}
+          onSubmitEditing={submit}
+        />
         {error ? <Note tone="bad">{error}</Note> : null}
-        <Button label="Sign in" onPress={submit} busy={busy} disabled={!badge || !pin} />
+        <Button label={S.login.signIn} onPress={submit} busy={busy} disabled={!badge || !pin} />
       </Panel>
 
-      <Panel title="Demo accounts">
+      <Panel title={S.login.demoAccounts}>
         {DEMO_OPERATORS.map((o) => (
           <Text key={o.badge_id} style={styles.demo}>
-            {o.badge_id} / {o.pin} — {o.name} ({o.role.toLowerCase()})
+            {S.login.demoLine(o.badge_id, o.pin, o.name, S.role[o.role])}
           </Text>
         ))}
       </Panel>

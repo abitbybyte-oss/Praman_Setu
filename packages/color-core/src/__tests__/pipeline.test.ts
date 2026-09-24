@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { calibrate, PATCH_ORDER, type PatchId } from "../card";
-import { applyAffine, fitAffine, IDENTITY_AFFINE } from "../ccm";
+import { applyAffine, correctImage, fitAffine, IDENTITY_AFFINE } from "../ccm";
 import { deltaE00 } from "../ciede2000";
 import { classify, inconclusiveWithoutMeasurement, minAreaPx, nearestClass, recommendedAction, type KitClassDef } from "../classify";
-import type { Lab, Vec3 } from "../color";
+import { srgb8ToLab, type Lab, type Vec3 } from "../color";
 import type { RgbaImage } from "../image";
 import { glareFraction, laplacianVariance } from "../metrics";
 import { qualityScore } from "../quality";
@@ -79,6 +79,24 @@ describe("affine colour correction", () => {
     const { cal, roi } = run({ cast: WARM_CAST, gamma: 1.08, noise: 3, sample: truth });
     expect(cal.card_status).toBe("VALID");
     expect(deltaE00(roi.lab, truth)).toBeLessThan(3);
+  });
+});
+
+describe("corrected display image", () => {
+  it("identity leaves pixels unchanged (within 1 level)", () => {
+    const img = renderScene({ noise: 3, sample: [48, 40, -22] });
+    const out = correctImage(img, IDENTITY_AFFINE);
+    let worst = 0;
+    for (let i = 0; i < out.length; i++) worst = Math.max(worst, Math.abs(out[i] - img.data[i]));
+    expect(worst).toBeLessThanOrEqual(1);
+  });
+
+  it("removes the cast: corrected pixels match the true sample colour", () => {
+    const truth: Lab = [48, 40, -22];
+    const { img, cal } = run({ cast: WARM_CAST, sample: truth });
+    const out = correctImage(img, cal.matrix);
+    const i = (ROI.y * img.width + ROI.x) * 4;
+    expect(deltaE00(srgb8ToLab([out[i], out[i + 1], out[i + 2]]), truth)).toBeLessThan(1.5);
   });
 });
 

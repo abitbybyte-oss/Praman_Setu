@@ -1,11 +1,13 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { S } from '../i18n';
+
 /** HOME-02 / PRD §2: every screen, record and printout carries this. It is
  * deliberately not dismissible. */
 export function SimulatedBanner() {
   return (
     <View style={styles.banner}>
-      <Text style={styles.text}>SIMULATED — NOT A DRUG TEST</Text>
+      <Text style={styles.text}>{S.app.banner}</Text>
     </View>
   );
 }

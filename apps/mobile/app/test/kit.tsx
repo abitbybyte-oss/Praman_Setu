@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput } from 'react-native';
 
+import { S } from '@/src/i18n';
 import { kits } from '@/src/services/refdb';
 import { Button, C, Note, Panel, Screen } from '@/src/ui/kit';
 import { useSession } from '@/src/workflow/store';
@@ -21,24 +22,24 @@ export default function KitScreen() {
   };
 
   return (
-    <Screen title="New test — kit" footer={<Button label="Continue to capture" onPress={start} disabled={!kitType} />}>
-      <Panel title="Kit type (simulated profiles)">
+    <Screen title={S.kit.title} footer={<Button label={S.kit.continue} onPress={start} disabled={!kitType} />}>
+      <Panel title={S.kit.kitType}>
         {kits().map(([type, k]) => (
           <Pressable key={type} onPress={() => setKitType(type)} style={[styles.kit, kitType === type && styles.selected]}>
             <Text style={styles.kitName}>{k.display_name}</Text>
             <Text style={styles.kitMeta}>
-              {type} · read at {k.protocol.required_s}s, before {k.protocol.max_s}s
+              {S.kit.kitMeta(type, k.protocol.required_s, k.protocol.max_s)}
             </Text>
           </Pressable>
         ))}
-        <Note>Kit QR scanning and the reaction timer arrive in a later phase; select the kit manually.</Note>
+        <Note>{S.kit.manualNote}</Note>
       </Panel>
 
-      <Panel title="Case (optional)">
-        <Text style={styles.label}>Case ID / FIR number</Text>
-        <TextInput style={styles.input} value={caseId} onChangeText={setCaseId} autoCapitalize="characters" placeholder="FIR-0419-2026" placeholderTextColor={C.dim} />
-        <Text style={styles.label}>Witness badge ID</Text>
-        <TextInput style={styles.input} value={witness} onChangeText={setWitness} keyboardType="number-pad" placeholder="optional" placeholderTextColor={C.dim} />
+      <Panel title={S.kit.case}>
+        <Text style={styles.label}>{S.kit.caseId}</Text>
+        <TextInput style={styles.input} value={caseId} onChangeText={setCaseId} autoCapitalize="characters" placeholder={S.kit.caseIdPlaceholder} placeholderTextColor={C.dim} />
+        <Text style={styles.label}>{S.kit.witness}</Text>
+        <TextInput style={styles.input} value={witness} onChangeText={setWitness} keyboardType="number-pad" placeholder={S.kit.optional} placeholderTextColor={C.dim} />
       </Panel>
     </Screen>
   );

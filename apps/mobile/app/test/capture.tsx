@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Camera, useCameraPermission, usePhotoOutput } from 'react-native-vision-camera';
 
+import { S } from '@/src/i18n';
 import { startLocationFix } from '@/src/services/context';
 import { storeCapture } from '@/src/services/evidence';
 import { workingCopy } from '@/src/services/image';
@@ -39,9 +40,9 @@ export default function CaptureScreen() {
 
   if (!draft) {
     return (
-      <Screen title="Capture">
-        <Note>No test in progress.</Note>
-        <Button label="Home" onPress={() => router.replace('/home')} />
+      <Screen title={S.capture.capture}>
+        <Note>{S.common.noTest}</Note>
+        <Button label={S.common.home} onPress={() => router.replace('/home')} />
       </Screen>
     );
   }
@@ -49,13 +50,13 @@ export default function CaptureScreen() {
   const take = async () => {
     setError(null);
     setBlurry(null);
-    setBusy('Capturing…');
+    setBusy(S.capture.capturing);
     try {
       const photo = await photoOutput.capturePhotoToFile({}, {});
       const takenAt = new Date().toISOString();
-      setBusy('Hashing original…');
+      setBusy(S.capture.hashing);
       const stored = await storeCapture(photo.filePath, draft.recordId, draft.captures.length + 1);
-      setBusy('Checking sharpness…');
+      setBusy(S.capture.checkingSharpness);
       const wc = await workingCopy(stored.uri);
       const blur = blurCheck(wc.img);
       addCapture({
@@ -89,35 +90,35 @@ export default function CaptureScreen() {
 
   return (
     <Screen
-      title={`Capture — ${draft.kitType}`}
+      title={S.capture.title(draft.kitType)}
       scroll={false}
       footer={
         <Row>
-          <Button label={draft.captures.length ? 'End test' : 'Cancel'} kind="secondary" onPress={endTest} disabled={!!busy} />
-          <Button label={busy ?? (draft.captures.length ? 'Retake' : 'Capture')} onPress={take} busy={!!busy} disabled={!hasPermission} />
+          <Button label={draft.captures.length ? S.capture.endTest : S.capture.cancel} kind="secondary" onPress={endTest} disabled={!!busy} />
+          <Button label={busy ?? (draft.captures.length ? S.capture.retake : S.capture.capture)} onPress={take} busy={!!busy} disabled={!hasPermission} />
         </Row>
       }>
       <View style={styles.preview}>
         {hasPermission ? (
           <Camera style={StyleSheet.absoluteFill} device="back" isActive={active} outputs={[photoOutput]} />
         ) : (
-          <Text style={styles.permission}>Camera permission is required to run a test. Grant it in Settings.</Text>
+          <Text style={styles.permission}>{S.capture.permission}</Text>
         )}
         {/* CAP-01: framing guides only; correctness comes from the in-frame card. */}
         <View pointerEvents="none" style={[styles.guide, styles.cardGuide]}>
-          <Text style={styles.guideText}>REFERENCE CARD</Text>
+          <Text style={styles.guideText}>{S.capture.guideCard}</Text>
         </View>
         <View pointerEvents="none" style={[styles.guide, styles.kitGuide]}>
-          <Text style={styles.guideText}>KIT REACTION AREA</Text>
+          <Text style={styles.guideText}>{S.capture.guideKit}</Text>
         </View>
       </View>
 
       {blurry !== null ? (
-        <Panel tone="bad" title="Image too blurry">
-          <Note tone="bad">Retake the photo — hold the phone steady and let it focus. (sharpness {Math.round(blurry)})</Note>
+        <Panel tone="bad" title={S.capture.blurryTitle}>
+          <Note tone="bad">{S.capture.blurryBody(Math.round(blurry))}</Note>
         </Panel>
       ) : (
-        <Note>Card and kit flat, whole card in frame, no shadow across the card. Captures so far: {draft.captures.length}.</Note>
+        <Note>{S.capture.hint(draft.captures.length)}</Note>
       )}
       {error ? <Note tone="bad">{error}</Note> : null}
     </Screen>

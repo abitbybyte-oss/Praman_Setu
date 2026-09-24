@@ -5,36 +5,40 @@ import { useEffect, useState } from 'react';
 import { Image, Text } from 'react-native';
 
 import { getDeviceIdentity } from '@/src/adapters/keystore';
+import { label, pct, S, when } from '@/src/i18n';
 import { writeJsonFile } from '@/src/services/evidence';
 import { envelopeById, evidencePath, exportLedger } from '@/src/services/ledger';
 import { Button, C, Field, Note, Panel, Row, Screen } from '@/src/ui/kit';
-import { ACTION_TEXT, OUTCOME_TEXT, pct, REASON_TEXT, when } from '@/src/ui/wording';
 
 /** S-10 Record detail (HIS-02) and share (EXP-01). */
+
+const TONE = { PRELIMINARY_POSITIVE: 'bad', PRELIMINARY_NEGATIVE: 'good', INCONCLUSIVE: 'warn' } as const;
+
 export default function RecordScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const envelope = envelopeById(id);
-  const [sig, setSig] = useState('checking…');
+  const [sig, setSig] = useState(S.record.sigChecking);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!envelope) return;
     getDeviceIdentity().then((identity) => {
       const check = checkEnvelope(envelope, identity.publicKey);
-      setSig(check.ok ? 'valid (ES256, this device)' : `FAILED — ${check.reason}`);
+      setSig(check.ok ? S.record.sigValid : S.record.sigFailed(check.reason));
     });
   }, [envelope]);
 
   if (!envelope) {
     return (
-      <Screen title="Record">
-        <Note tone="bad">Record not found.</Note>
+      <Screen title={S.record.notFound}>
+        <Note tone="bad">{S.record.notFound}</Note>
       </Screen>
     );
   }
 
   const r = envelope.record as unknown as TestRecord;
   const cls = r.classification;
+  const wording = S.outcome[cls.outcome];
   const photo = r.evidence_image ? evidencePath(r.evidence_image.sha256) : null;
 
   const shareJson = async () => {
@@ -43,7 +47,7 @@ export default function RecordScreen() {
       // The full ledger export lets verify.html check this record's signature
       // (via GENESIS) and its position in the chain.
       const file = writeJsonFile(`fdtc-ledger-to-seq-${r.seq}.json`, await exportLedger());
-      await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Share evidence record' });
+      await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: S.record.shareJsonTitle });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -52,57 +56,70 @@ export default function RecordScreen() {
   const sharePhoto = async () => {
     if (!photo) return;
     try {
-      await Sharing.shareAsync(photo, { mimeType: 'image/jpeg', dialogTitle: 'Share original photo (send as a file)' });
+      await Sharing.shareAsync(photo, { mimeType: 'image/jpeg', dialogTitle: S.record.sharePhotoTitle });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
   };
 
+  const loc = r.location;
+
   return (
     <Screen
-      title={`Record · seq ${r.seq}`}
+      title={S.record.title(r.seq)}
       footer={
         <Row>
-          <Button label="Share record JSON" onPress={shareJson} />
-          <Button label="Share photo" kind="secondary" onPress={sharePhoto} disabled={!photo} />
+          <Button label={S.record.shareJson} onPress={shareJson} />
+          <Button label={S.record.sharePhoto} kind="secondary" onPress={sharePhoto} disabled={!photo} />
         </Row>
       }>
-      <Panel tone={OUTCOME_TEXT[cls.outcome].tone}>
-        <Text style={{ color: C.text, fontSize: 19, fontWeight: '800' }}>{OUTCOME_TEXT[cls.outcome].title}</Text>
-        {cls.outcome !== 'INCONCLUSIVE' ? <Text style={{ color: C.text }}>Colour-match confidence {pct(cls.confidence)}</Text> : null}
+      <Panel tone={TONE[cls.outcome]}>
+        <Text style={{ color: C.text, fontSize: 19, fontWeight: '800' }}>{wording.title}</Text>
+        {cls.outcome !== 'INCONCLUSIVE' ? <Text style={{ color: C.text }}>{S.result.confidence(pct(cls.confidence))}</Text> : null}
         {cls.inconclusive_reasons.map((x) => (
-          <Note key={x}>• {REASON_TEXT[x] ?? x}</Note>
+          <Note key={x}>• {label(S.reason, x)}</Note>
         ))}
-        {cls.recommended_action ? <Text style={{ color: C.amber, fontWeight: '700' }}>{ACTION_TEXT[cls.recommended_action]}</Text> : null}
-        <Note>{OUTCOME_TEXT[cls.outcome].always}</Note>
+        {cls.recommended_action ? <Text style={{ color: C.amber, fontWeight: '700' }}>{label(S.action, cls.recommended_action)}</Text> : null}
+        <Note>{wording.always}</Note>
       </Panel>
 
-      {photo ? <Image source={{ uri: photo }} style={{ width: '100%', aspectRatio: (r.evidence_image!.width || 3) / (r.evidence_image!.height || 4), borderRadius: 10 }} resizeMode="contain" /> : null}
-
-      <Panel title="Integrity">
-        <Field label="Signature" value={sig} />
-        <Field label="Chain position" value={`seq ${r.seq}, follows ${r.prev_hash.slice(0, 16)}…`} mono />
-        <Field label="Record hash" value={envelope.record_hash} mono />
-        <Field label="Photo SHA-256" value={r.evidence_image?.sha256 ?? '— (no accepted photo)'} mono />
-        <Field label="Captures" value={r.captures.map((c) => `#${c.n} ${c.accepted ? 'accepted' : `rejected (${c.reject_reasons.join(', ')})`}`).join('\n')} />
-      </Panel>
-
-      <Panel title="Details">
-        <Field label="Created" value={when(r.created_at)} />
-        <Field label="Operator" value={`badge ${r.operator.badge_id} (${r.operator.role.toLowerCase()})`} />
-        <Field label="Kit" value={`${r.kit.display_name} (${r.kit.kit_type})`} />
-        <Field label="Case / witness" value={`${r.case.case_id ?? '—'} / ${r.case.witness_badge_id ?? '—'}`} />
-        <Field label="Card" value={r.calibration ? `${r.calibration.card_version} · ${r.calibration.card_status}` : '—'} />
-        {r.measurement ? <Field label="Sample L*a*b*" value={r.measurement.lab.join(', ')} /> : null}
-        {r.quality ? <Field label="Quality" value={`${r.quality.score} ${r.quality.band}`} /> : null}
-        <Field
-          label="Location"
-          value={r.location ? `${r.location.lat}, ${r.location.lon} (±${r.location.accuracy_m ?? '?'} m)${r.location.mocked ? ' · MOCKED' : ''}` : 'unavailable'}
+      {photo ? (
+        <Image
+          source={{ uri: photo }}
+          style={{ width: '100%', aspectRatio: (r.evidence_image!.width || 3) / (r.evidence_image!.height || 4), borderRadius: 10 }}
+          resizeMode="contain"
         />
-        <Field label="Device integrity" value={`rooted: ${r.integrity.rooted ?? 'unknown'}`} />
-        <Field label="Reference DB" value={`${r.reference_db.version} · ${r.reference_db.sha256.slice(0, 16)}…`} mono />
+      ) : null}
+
+      <Panel title={S.record.integrity}>
+        <Field label={S.record.signature} value={sig} />
+        <Field label={S.record.chainPos} value={S.record.chainLine(r.seq, r.prev_hash.slice(0, 16))} mono />
+        <Field label={S.result.recordHash} value={envelope.record_hash} mono />
+        <Field label={S.result.photoHash} value={r.evidence_image?.sha256 ?? S.result.noPhoto} mono />
+        <Field
+          label={S.record.captures}
+          value={r.captures
+            .map((c) => (c.accepted ? S.record.captureAccepted(c.n) : S.record.captureRejected(c.n, c.reject_reasons.map((x) => label(S.reason, x)).join(', '))))
+            .join('\n')}
+        />
       </Panel>
-      <Note>To verify independently: share the JSON and the photo (as a file, not a compressed image), then open verify.html.</Note>
+
+      <Panel title={S.record.details}>
+        <Field label={S.record.created} value={when(r.created_at)} />
+        <Field label={S.result.operator} value={S.record.operatorLine(r.operator.badge_id, label(S.role, r.operator.role))} />
+        <Field label={S.result.kit} value={`${r.kit.display_name} (${r.kit.kit_type})`} />
+        <Field label={S.record.caseWitness} value={`${r.case.case_id ?? S.common.dash} / ${r.case.witness_badge_id ?? S.common.dash}`} />
+        <Field label={S.result.card} value={r.calibration ? `${r.calibration.card_version} · ${r.calibration.card_status}` : S.common.dash} />
+        {r.measurement ? <Field label={S.record.sampleLab} value={r.measurement.lab.join(', ')} /> : null}
+        {r.quality ? <Field label={S.result.quality} value={`${r.quality.score} ${r.quality.band}`} /> : null}
+        <Field
+          label={S.result.location}
+          value={loc ? S.result.locationLine(loc.lat, loc.lon, loc.accuracy_m == null ? '?' : String(loc.accuracy_m), loc.mocked === true) : S.record.unavailable}
+        />
+        <Field label={S.record.integrityFlags} value={S.record.rooted(r.integrity.rooted == null ? S.record.unknown : String(r.integrity.rooted))} />
+        <Field label={S.result.refdb} value={`${r.reference_db.version} · ${r.reference_db.sha256.slice(0, 16)}…`} mono />
+      </Panel>
+      <Note>{S.record.verifyHint}</Note>
       {error ? <Note tone="bad">{error}</Note> : null}
     </Screen>
   );

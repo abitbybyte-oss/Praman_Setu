@@ -1,5 +1,5 @@
 import { AlphaType, ColorType, Skia, type SkImage } from '@shopify/react-native-skia';
-import type { RgbaImage } from '@fdtc/color-core';
+import { correctImage, type RgbaImage } from '@fdtc/color-core';
 
 /** Working copy (ARCHITECTURE §6.1): Skia decodes the original JPEG (applying
  * its orientation), downscales the long side to 1600 px and reads RGBA pixels.
@@ -53,4 +53,23 @@ export async function workingCopy(uri: string): Promise<WorkingCopy> {
   cache.clear(); // one test at a time; keep memory bounded
   cache.set(uri, wc);
   return wc;
+}
+
+let correctedCache: { key: string; view: WorkingCopy } | null = null;
+
+/** ROI-01: the same working copy, displayed colour-corrected. Only the display
+ * image changes; taps map to the same pixels and measurement still runs on the
+ * raw pixels (it applies the matrix itself). */
+export function correctedView(wc: WorkingCopy, matrix: number[]): WorkingCopy {
+  const key = `${wc.img.width}x${wc.img.height}:${matrix.join(',')}`;
+  if (correctedCache?.key === key) return correctedCache.view;
+  const pixels = correctImage(wc.img, matrix);
+  const image = Skia.Image.MakeImage(
+    { width: wc.img.width, height: wc.img.height, colorType: ColorType.RGBA_8888, alphaType: AlphaType.Unpremul },
+    Skia.Data.fromBytes(new Uint8Array(pixels.buffer)),
+    wc.img.width * 4
+  );
+  const view = { ...wc, skImage: image ?? wc.skImage };
+  correctedCache = { key, view };
+  return view;
 }

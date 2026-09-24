@@ -63,3 +63,36 @@ export function fitAffine(measured: Vec3[], reference: Vec3[], ridge: number = D
   }
   return out;
 }
+
+/** Apply the colour correction to a whole RGBA8 image, for display (ROI-01).
+ * Lookup tables keep it fast enough for a 1600 px working copy on a phone:
+ * sRGB→linear is a 256-entry table, linear→sRGB a 4096-entry table. */
+export function correctImage(
+  img: { width: number; height: number; data: Uint8Array | Uint8ClampedArray },
+  m: AffineMatrix
+): Uint8ClampedArray {
+  const toLin = new Float32Array(256);
+  for (let i = 0; i < 256; i++) {
+    const c = i / 255;
+    toLin[i] = c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  }
+  const N = 4096;
+  const toSrgb = new Uint8ClampedArray(N + 1);
+  for (let i = 0; i <= N; i++) {
+    const c = i / N;
+    toSrgb[i] = Math.round(255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055));
+  }
+  const enc = (v: number) => toSrgb[v <= 0 ? 0 : v >= 1 ? N : Math.round(v * N)];
+  const out = new Uint8ClampedArray(img.data.length);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = toLin[d[i]];
+    const g = toLin[d[i + 1]];
+    const b = toLin[d[i + 2]];
+    out[i] = enc(m[0] * r + m[1] * g + m[2] * b + m[3]);
+    out[i + 1] = enc(m[4] * r + m[5] * g + m[6] * b + m[7]);
+    out[i + 2] = enc(m[8] * r + m[9] * g + m[10] * b + m[11]);
+    out[i + 3] = 255;
+  }
+  return out;
+}

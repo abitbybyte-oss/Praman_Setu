@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Text, useWindowDimensions } from 'react-native';
 
 import { workingCopy, type WorkingCopy } from '@/src/services/image';
-import { calibrateCard, CARD_CHECK_TEXT, CORNER_TEXT, snapCorner } from '@/src/services/measure';
+import { label, S } from '@/src/i18n';
+import { calibrateCard, snapCorner } from '@/src/services/measure';
 import { ImageTapper } from '@/src/ui/ImageTapper';
 import { Button, C, Note, Panel, Row, Screen } from '@/src/ui/kit';
 import { currentCapture, useSession } from '@/src/workflow/store';
@@ -13,13 +14,6 @@ import { currentCapture, useSession } from '@/src/workflow/store';
 /** S-06 Card calibration (CAL-01..05). The officer taps the four corner dots
  * of the printed card; the patches are located by homography, sampled,
  * colour-corrected and checked. */
-
-const CORNER_LABEL: Record<CornerId, string> = {
-  top_left: 'TOP-LEFT',
-  top_right: 'TOP-RIGHT',
-  bottom_right: 'BOTTOM-RIGHT',
-  bottom_left: 'BOTTOM-LEFT',
-};
 
 export default function CardScreen() {
   const draft = useSession((st) => st.draft);
@@ -49,8 +43,8 @@ export default function CardScreen() {
 
   if (!draft || !cap) {
     return (
-      <Screen title="Card">
-        <Note>No accepted photo. Go back and capture one.</Note>
+      <Screen title={S.card.title}>
+        <Note>{S.card.noPhoto}</Note>
       </Screen>
     );
   }
@@ -100,43 +94,43 @@ export default function CardScreen() {
     </>
   );
 
-  const prompt = taps.length < 4 ? `Tap the ${CORNER_LABEL[CORNER_ORDER[taps.length]]} dot of the card` : null;
+  const prompt = taps.length < 4 ? S.card.tapPrompt(S.card.corners[CORNER_ORDER[taps.length]]) : null;
   const valid = cal?.card_status === 'VALID';
 
   return (
     <Screen
-      title="Calibrate — reference card"
+      title={S.card.title}
       footer={
         <>
           <Row>
-            <Button label="Undo tap" kind="secondary" onPress={undo} disabled={taps.length === 0} />
-            <Button label="Retake photo" kind="secondary" onPress={retake} />
+            <Button label={S.card.undo} kind="secondary" onPress={undo} disabled={taps.length === 0} />
+            <Button label={S.card.retake} kind="secondary" onPress={retake} />
           </Row>
-          {cal && !valid ? <Button label="End test (Inconclusive)" kind="danger" onPress={endInvalid} /> : null}
-          <Button label="Continue — mark sample" onPress={() => router.push('/test/roi')} disabled={!valid} />
+          {cal && !valid ? <Button label={S.card.endInconclusive} kind="danger" onPress={endInvalid} /> : null}
+          <Button label={S.card.continue} onPress={() => router.push('/test/roi')} disabled={!valid} />
         </>
       }>
       {prompt ? <Text style={{ color: C.text, fontSize: 17, fontWeight: '700' }}>{prompt}</Text> : null}
-      {wc ? <ImageTapper wc={wc} onTap={onTap} overlay={overlay} maxHeight={height * 0.5} /> : <Note>Loading photo…</Note>}
-      {taps.some((t) => !t.snapped) ? <Note tone="warn">Amber ring: no dot found under that tap — undo and tap the centre of the black dot.</Note> : null}
+      {wc ? <ImageTapper wc={wc} onTap={onTap} overlay={overlay} maxHeight={height * 0.5} /> : <Note>{S.common.loadingPhoto}</Note>}
+      {taps.some((t) => !t.snapped) ? <Note tone="warn">{S.card.notSnapped}</Note> : null}
 
       {card && !card.sampling.corners.ok ? (
-        <Panel tone="bad" title="Corner taps rejected">
+        <Panel tone="bad" title={S.card.cornersRejected}>
           {card.sampling.corners.problems.map((p) => (
-            <Note key={p} tone="bad">• {CORNER_TEXT[p] ?? p}</Note>
+            <Note key={p} tone="bad">• {label(S.card.cornerProblems, p)}</Note>
           ))}
         </Panel>
       ) : null}
 
       {cal ? (
-        <Panel tone={valid ? 'good' : 'bad'} title={valid ? 'CARD VALID' : 'CARD INVALID'}>
+        <Panel tone={valid ? 'good' : 'bad'} title={valid ? S.card.valid : S.card.invalid}>
           {valid ? (
             <Note>
-              Colour correction fitted. Mean ΔE00 {cal.residual_de00_mean.toFixed(2)}, max {cal.residual_de00_max.toFixed(2)}.
+              {S.card.fitted(cal.residual_de00_mean.toFixed(2), cal.residual_de00_max.toFixed(2))}
             </Note>
           ) : (
             cal.failed_checks.map((c) => (
-              <Note key={c} tone="bad">• {CARD_CHECK_TEXT[c] ?? c}</Note>
+              <Note key={c} tone="bad">• {label(S.card.checks, c)}</Note>
             ))
           )}
         </Panel>

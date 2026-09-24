@@ -121,23 +121,3 @@ export function measureSample(
   return { roi, glare, quality, classification, min_area_px, glareHardGate: glare.glare_fraction >= t.glare_hard };
 }
 
-/** Plain-language text for card checks (CAL-04 "failed checks listed"). */
-export const CARD_CHECK_TEXT: Record<string, string> = {
-  CARD_RECOGNISED: 'Card version not recognised',
-  ALL_MARKED: 'Card corners not located — retap the four dots',
-  PATCH_SAMPLE_OK: 'A colour patch is not uniform (shadow, glare or dirt)',
-  EXPECTED_HUE: 'Patch colours are not where expected — wrong card or card upside down',
-  WHITE_NOT_CLIPPED: 'White patch overexposed — too bright',
-  BLACK_NOT_CRUSHED: 'Black patch underexposed — too dark',
-  NEUTRAL_RAMP: 'White / gray / black patches out of order',
-  NEUTRAL_CAST: 'Strong colour cast remains after correction',
-  RESIDUAL_MEAN: 'Colour correction error too high — uneven lighting?',
-  RESIDUAL_MAX: 'One patch corrects badly — shadow or glare on the card?',
-};
-
-export const CORNER_TEXT: Record<string, string> = {
-  NOT_CONVEX: 'Corner taps cross over',
-  WRONG_ORDER: 'Corners tapped in the wrong order',
-  TOO_SMALL: 'Card too small in the photo — move closer',
-  BAD_ASPECT: 'Corner taps do not match the card shape',
-};

@@ -215,10 +215,15 @@ export interface TestIndexRow {
   confidence: number | null;
   quality_score: number | null;
   evidence_sha256: string | null;
+  sync_status: string;
 }
 
 export function listTests(): TestIndexRow[] {
-  return getDb().getAllSync<TestIndexRow>('SELECT * FROM test_index ORDER BY created_at DESC');
+  return getDb().getAllSync<TestIndexRow>(
+    `SELECT t.*, COALESCE(o.status, 'PENDING') AS sync_status
+       FROM test_index t LEFT JOIN sync_outbox o ON o.record_id = t.record_id
+      ORDER BY t.created_at DESC`
+  );
 }
 
 export function recordEvidenceFile(f: { sha256: string; recordId: string; kind: string; path: string; bytes: number; accepted: boolean }): void {

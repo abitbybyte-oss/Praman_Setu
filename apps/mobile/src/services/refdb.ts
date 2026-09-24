@@ -23,7 +23,7 @@ export function loadRefdb(): LoadedRefdb {
   const check = verifyReferenceDb(db, agencyKey.jwk as never, agencyKey.key_id);
   if (!check.ok) {
     failure = check.reason;
-    throw new Error(`Reference data failed verification (${check.reason}) — reinstall the app.`);
+    throw new Error(`REFDB_${check.reason}`);
   }
   loaded = { db, version: check.version, sha256: check.sha256 };
   return loaded;
