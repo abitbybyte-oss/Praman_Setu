@@ -5,6 +5,7 @@ import type { CornerId, Point, Circle } from '@fdtc/color-core';
 import type { Operator } from '../services/auth';
 import type { CardResult, SampleResult } from '../services/measure';
 import { currentCapture, guards, type CaptureEntry, type Draft, type EndedEarly } from './draft';
+import { deleteDraft, saveDraft } from './persist';
 
 export { currentCapture, guards, type CaptureEntry, type Draft, type EndedEarly };
 
@@ -30,6 +31,8 @@ interface State {
   setSample(roi: Circle, sample: SampleResult): void;
   endEarly(e: EndedEarly): void;
   clearDraft(): void;
+  /** EVD-08: put a recovered draft back in play. */
+  restoreDraft(d: Draft): void;
 }
 
 export const useSession = create<State>((set, get) => ({
@@ -40,12 +43,15 @@ export const useSession = create<State>((set, get) => ({
   login: (operator) => set({ operator }),
   logout: () => set({ operator: null, draft: null }),
 
-  startTest: (kitType, caseId, witness) =>
+  startTest: (kitType, caseId, witness) => {
+    const operator = get().operator;
+    if (!operator) throw new Error('sign in first');
     set({
       lastCase: { caseId, witness },
       draft: {
         recordId: ExpoCrypto.randomUUID(),
         startedAt: new Date().toISOString(),
+        operator,
         kitType,
         caseId,
         witness,
@@ -57,7 +63,8 @@ export const useSession = create<State>((set, get) => ({
         sample: null,
         endedEarly: null,
       },
-    }),
+    });
+  },
 
   addCapture: (c) => {
     const d = requireDraft(get().draft);
@@ -92,8 +99,19 @@ export const useSession = create<State>((set, get) => ({
   },
 
   endEarly: (endedEarly) => set({ draft: { ...requireDraft(get().draft), endedEarly } }),
-  clearDraft: () => set({ draft: null }),
+  clearDraft: () => {
+    deleteDraft();
+    set({ draft: null });
+  },
+  restoreDraft: (draft) => set({ draft }),
 }));
+
+// EVD-08: persist every draft change. Signing out keeps the stored draft, so an
+// interrupted test is offered for recovery at the next sign-in; only an
+// explicit clear (saved, or cancelled with no captures) removes it.
+useSession.subscribe((state, prev) => {
+  if (state.draft && state.draft !== prev.draft) saveDraft(state.draft);
+});
 
 function requireDraft(d: Draft | null): Draft {
   if (!d) throw new Error('no test in progress');

@@ -107,6 +107,7 @@ function draftFor(kitType: string): Draft {
   return {
     recordId: crypto.randomUUID(),
     startedAt: new Date().toISOString(),
+    operator: { badge_id: '1001', name: 'Demo Officer', role: 'OFFICER' },
     kitType,
     caseId: 'FIR-DEMO-1',
     witness: null,
@@ -122,26 +123,41 @@ function draftFor(kitType: string): Draft {
 
 function save(label: string, d: Draft, expectOutcome: string) {
   const prev = chain[chain.length - 1];
-  const rec = buildTestRecord(
+  const createdAt = new Date().toISOString();
+  const deviceTime = createdAt;
+  const build = (draft: Draft) => buildTestRecord(
     {
-      draft: d,
+      draft,
       operator: { badge_id: '1001', name: 'Demo Officer', role: 'OFFICER' },
       ctx: {
         location: null,
-        clock: { device_time: new Date().toISOString(), gnss_time: null, skew_s: null, monotonic_ms: 1234 },
+        clock: { device_time: deviceTime, gnss_time: null, skew_s: null, monotonic_ms: 1234 },
         integrity: { rooted: false, mock_location: null, clock_skew: null, location_unavailable: true },
       },
       identity,
       refdb: { version: refdb.version, sha256: refdb.sha256 },
-      profile: kit(d.kitType),
+      profile: kit(draft.kitType),
       cardVersion: DEFAULT_CARD,
-      wc: d.captures.some((c) => c.accepted) ? { width: W, height: H, scale: 2.04, origWidth: 2448, origHeight: 3264 } : null,
+      wc: draft.captures.some((c) => c.accepted) ? { width: W, height: H, scale: 2.04, origWidth: 2448, origHeight: 3264 } : null,
       app: { version: '0.1.0', platform: 'node' },
-      createdAt: new Date().toISOString(),
+      createdAt,
     },
     chain.length,
     prev.record_hash
   );
+  const rec = build(d);
+  // EVD-08: a draft recovered from its JSON copy must yield the identical record.
+  const recovered = build(JSON.parse(JSON.stringify(d)) as Draft);
+  if (JSON.stringify(recovered) !== JSON.stringify(rec)) {
+    ok = false;
+    const a = rec as unknown as Record<string, unknown>;
+    const b = recovered as unknown as Record<string, unknown>;
+    const diff = Object.keys(a).filter((k) => JSON.stringify(a[k]) !== JSON.stringify(b[k]));
+    console.log(`✗ ${label}: draft recovered from JSON builds a different record in: ${diff.join(', ')}`);
+    for (const k of diff) console.log(`    before ${JSON.stringify(a[k]).slice(0, 300)}
+    after  ${JSON.stringify(b[k]).slice(0, 300)}`);
+    return;
+  }
   try {
     parseTestRecord(rec);
   } catch (e) {

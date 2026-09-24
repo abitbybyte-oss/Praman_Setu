@@ -1,5 +1,6 @@
 import type { Circle, CornerId, InconclusiveReason, Point } from '@fdtc/color-core';
 
+import type { Operator } from '../services/auth';
 import type { CardResult, SampleResult } from '../services/measure';
 
 /** Test draft types and guards (ARCHITECTURE §5.3). Pure: no React Native. */
@@ -20,6 +21,8 @@ export type EndedEarly = { kind: 'CARD_INVALID' | 'HARD_GATE' | 'ABANDONED'; rea
 export interface Draft {
   recordId: string;
   startedAt: string;
+  /** Who started the test; the record is attributed to them even if someone else ends it. */
+  operator: Operator;
   kitType: string;
   caseId: string | null;
   witness: string | null;
@@ -37,6 +40,14 @@ export function currentCapture(d: Draft | null): CaptureEntry | null {
   if (!d) return null;
   for (let i = d.captures.length - 1; i >= 0; i--) if (d.captures[i].accepted) return d.captures[i];
   return null;
+}
+
+/** EVD-08: where to resume an interrupted test. */
+export function resumeRoute(d: Draft): '/test/capture' | '/test/card' | '/test/roi' | '/test/result' {
+  if (d.endedEarly || d.sample) return '/test/result';
+  if (d.card && d.card.calibration.card_status === 'VALID') return '/test/roi';
+  if (currentCapture(d)) return '/test/card';
+  return '/test/capture';
 }
 
 /** Guards from ARCHITECTURE §5.3. */

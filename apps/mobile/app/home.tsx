@@ -3,10 +3,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Text } from 'react-native';
 
 import { getDeviceIdentity } from '@/src/adapters/keystore';
-import { S } from '@/src/i18n';
+import { S, when } from '@/src/i18n';
 import { auditChain, ledgerLength, listTests } from '@/src/services/ledger';
 import { loadRefdb } from '@/src/services/refdb';
 import { ensureRegistered, registration, type Registration } from '@/src/services/registry';
+import { resumeRoute, type Draft } from '@/src/workflow/draft';
+import { deleteDraft, loadDraft } from '@/src/workflow/persist';
 import { Button, C, Field, Note, Panel, Screen } from '@/src/ui/kit';
 import { useSession } from '@/src/workflow/store';
 
@@ -18,6 +20,9 @@ export default function HomeScreen() {
   const [chain, setChain] = useState<{ ok: boolean | null; detail: string }>({ ok: null, detail: S.home.chainChecking });
   const [counts, setCounts] = useState({ records: 0, tests: 0 });
   const [reg, setReg] = useState<Registration>(registration());
+  const [recovered, setRecovered] = useState<{ draft: Draft; updatedAt: string } | null>(null);
+  const restoreDraft = useSession((st) => st.restoreDraft);
+  const endEarly = useSession((st) => st.endEarly);
 
   // SYN-01: each time Home is shown, try any pending registration (offline-safe).
   useFocusEffect(
@@ -25,6 +30,11 @@ export default function HomeScreen() {
       if (!operator) return;
       setReg(registration());
       setCounts({ records: ledgerLength(), tests: listTests().length });
+      // EVD-08: an interrupted test with captures must be resumed or ended; one
+      // without captures holds no evidence and is dropped.
+      const found = loadDraft();
+      if (found && found.draft.captures.length === 0) deleteDraft();
+      setRecovered(found && found.draft.captures.length > 0 && !useSession.getState().draft ? found : null);
       ensureRegistered(operator.badge_id).then(setReg);
     }, [operator])
   );
@@ -57,7 +67,37 @@ export default function HomeScreen() {
         </Panel>
       ) : null}
 
-      <Button label={S.home.startTest} onPress={() => router.push('/test/kit')} />
+      {recovered ? (
+        <Panel tone="warn" title={S.recovery.title}>
+          <Note>
+            {S.recovery.body(recovered.draft.kitType, recovered.draft.operator.badge_id, when(recovered.updatedAt), recovered.draft.captures.length)}
+          </Note>
+          {recovered.draft.operator.badge_id === operator.badge_id ? (
+            <Button
+              label={S.recovery.resume}
+              onPress={() => {
+                restoreDraft(recovered.draft);
+                setRecovered(null);
+                router.push(resumeRoute(recovered.draft));
+              }}
+            />
+          ) : (
+            <Note>{S.recovery.otherOfficer(recovered.draft.operator.badge_id)}</Note>
+          )}
+          <Button
+            label={S.recovery.end}
+            kind="danger"
+            onPress={() => {
+              restoreDraft(recovered.draft);
+              endEarly({ kind: 'ABANDONED', reasons: ['ABANDONED'] });
+              setRecovered(null);
+              router.push('/test/result');
+            }}
+          />
+        </Panel>
+      ) : null}
+
+      <Button label={S.home.startTest} onPress={() => router.push('/test/kit')} disabled={!!recovered} />
       <Button label={S.home.history} kind="secondary" onPress={() => router.push('/history')} />
 
       <Panel title={S.home.thisDevice}>

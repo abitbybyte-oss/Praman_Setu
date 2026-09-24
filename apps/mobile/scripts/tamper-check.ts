@@ -78,6 +78,7 @@ function addTest(caseId: string, sha: string, clockSkew = false) {
   const d: Draft = {
     recordId: crypto.randomUUID(),
     startedAt: new Date().toISOString(),
+    operator: { badge_id: '1001', name: 'Demo Officer', role: 'OFFICER' },
     kitType: 'SIM-A',
     caseId,
     witness: null,

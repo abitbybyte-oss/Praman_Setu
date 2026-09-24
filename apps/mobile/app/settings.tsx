@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { S, when } from '@/src/i18n';
-import { auditChain, ledgerLength, rebuildIndex } from '@/src/services/ledger';
+import { auditLedger, rebuildIndex, type AuditRow } from '@/src/services/ledger';
 import { pingServer, registerDevice, registration, serverUrl, setServerUrl, type Registration } from '@/src/services/registry';
 import { Button, C, Field, Note, Panel, Row, Screen } from '@/src/ui/kit';
 import { useSession } from '@/src/workflow/store';
@@ -16,6 +16,7 @@ export default function SettingsScreen() {
   const [ping, setPing] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [auditResult, setAuditResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [rows, setRows] = useState<AuditRow[]>([]);
 
   const save = async () => {
     setBusy('save');
@@ -36,11 +37,13 @@ export default function SettingsScreen() {
 
   const runAudit = async () => {
     setBusy('audit');
-    const r = await auditChain();
+    const result = await auditLedger();
+    const first = result.find((x) => !x.ok);
+    setRows(result);
     setAuditResult(
-      r.ok
-        ? { ok: true, text: S.settings.auditOk(ledgerLength(), when(new Date().toISOString())) }
-        : { ok: false, text: S.settings.auditFailed(r.failure.seq, r.failure.reason) }
+      first
+        ? { ok: false, text: S.settings.auditFailed(first.seq, S.settings.problems[first.problem!] ?? first.problem!) }
+        : { ok: true, text: S.settings.auditOk(result.length, when(new Date().toISOString())) }
     );
     setBusy(null);
   };
@@ -48,6 +51,7 @@ export default function SettingsScreen() {
   const rebuild = () => {
     setBusy('rebuild');
     const n = rebuildIndex();
+    setRows([]);
     setAuditResult({ ok: true, text: S.settings.rebuilt(n) });
     setBusy(null);
   };
@@ -90,11 +94,28 @@ export default function SettingsScreen() {
           <Button label={S.settings.rebuild} kind="secondary" onPress={rebuild} busy={busy === 'rebuild'} />
         </Row>
         {auditResult ? <Note tone={auditResult.ok ? undefined : 'bad'}>{auditResult.text}</Note> : null}
+        {rows.map((row) => {
+          const first = !row.ok && rows.find((x) => !x.ok) === row;
+          return (
+            <View key={row.seq} style={[styles.auditRow, first && styles.firstFail]}>
+              <Text style={[styles.mark, { color: row.ok ? C.green : C.red }]}>{row.ok ? S.settings.auditPass : '✗'}</Text>
+              <Text style={styles.auditText}>
+                {S.settings.auditRow(row.seq, row.record_type, row.record_id.slice(0, 8))}
+                {row.ok ? '' : ` — ${S.settings.problems[row.problem!] ?? row.problem}`}
+                {first ? ` — ${S.settings.firstFailure}` : ''}
+              </Text>
+            </View>
+          );
+        })}
       </Panel>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  auditRow: { flexDirection: 'row', gap: 8, paddingVertical: 3, paddingHorizontal: 4, borderRadius: 4 },
+  firstFail: { backgroundColor: '#3a1414' },
+  mark: { width: 26, fontWeight: '800', fontSize: 12.5 },
+  auditText: { color: C.muted, fontSize: 12.5, fontFamily: 'monospace', flex: 1 },
   input: { backgroundColor: C.bg, borderColor: C.border, borderWidth: 1, borderRadius: 8, color: C.text, fontSize: 16, paddingHorizontal: 12, paddingVertical: 10 },
 });

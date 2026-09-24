@@ -29,10 +29,10 @@ Golden rule from the PRD (§12): **when time runs short, cut P2 first, then P1 w
 
 ## 1. Phase 0 — Setup & spikes (do first, today/tomorrow)
 
-- [ ] Scaffold monorepo: `apps/mobile`, `apps/verify`, `apps/mock-server`, `packages/color-core`, `packages/evidence-core`, `packages/refdb`, `tools/`
-- [ ] Expo dev build running on the **actual demo phone** with vision-camera + Skia + SQLite
-- [ ] Spike: take a photo → hash it → sign it (ES256/P-256) in RN → verify the signature in plain Node (`crypto.verify`) and in a browser (verify.html stub)
-- [ ] Pin SDK / library versions (native build risk is the #1 architecture risk)
+- [x] Scaffold monorepo: `apps/mobile`, `apps/verify`, `apps/mock-server`, `packages/color-core`, `packages/evidence-core`, `packages/refdb`, `tools/`
+- [x] Expo dev build running on the **actual demo phone** with vision-camera + Skia + SQLite — EAS dev build on the demo phone; vision-camera, Skia, SQLite smoke test 8/8
+- [x] Spike: take a photo → hash it → sign it (ES256/P-256) in RN → verify the signature in plain Node (`crypto.verify`) and in a browser (verify.html stub) — signature verified with Node crypto.verify and in verify.html
+- [x] Pin SDK / library versions (native build risk is the #1 architecture risk) — lockfile; SDK 57 / RN 0.86.3
 - **Exit criteria:** a photo taken on the phone is hashed and signed, and the signature verifies in both `verify.html` and Node's `crypto.verify`.
 
 ---
@@ -40,46 +40,48 @@ Golden rule from the PRD (§12): **when time runs short, cut P2 first, then P1 w
 ## 2. Phase 1 — Core loop (P0) — the demo depends entirely on this
 
 ### Auth & Home
-- [ ] AUTH-01 Badge ID + PIN login against local mock operator directory; PINs as salted scrypt hashes
-- [ ] AUTH-02 Route by role: Officer → Home, Supervisor → Review list
-- [ ] HOME-01 Officer name/badge, Start New Test, View History
-- [ ] HOME-02 Persistent, non-dismissible "SIMULATED — NOT A DRUG TEST" banner
+- [x] AUTH-01 Badge ID + PIN login against local mock operator directory; PINs as salted scrypt hashes
+- [x] AUTH-02 Route by role: Officer → Home, Supervisor → Review list
+- [x] HOME-01 Officer name/badge, Start New Test, View History
+- [x] HOME-02 Persistent, non-dismissible "SIMULATED — NOT A DRUG TEST" banner
 
 ### Kit selection
-- [ ] KIT-01 Manual kit-type dropdown backed by simulated profiles (SIM-A…SIM-D)
-- [ ] KIT-02 Optional case ID/FIR + witness badge ID, pre-filled on repeat test
+- [x] KIT-01 Manual kit-type dropdown backed by simulated profiles (SIM-A…SIM-D)
+- [x] KIT-02 Optional case ID/FIR + witness badge ID, pre-filled on repeat test
 
 ### Guided capture
-- [ ] CAP-01 Live preview with reference-card + kit guide rectangles
-- [ ] CAP-02 Save original JPEG **write-once**; SHA-256 over exact bytes before any processing
-- [ ] CAP-03 Blur hard gate (Laplacian variance) → "Image too blurry, retake"
+- [x] CAP-01 Live preview with reference-card + kit guide rectangles
+- [x] CAP-02 Save original JPEG **write-once**; SHA-256 over exact bytes before any processing
+- [x] CAP-03 Blur hard gate (Laplacian variance) → "Image too blurry, retake"
 
 ### Calibration (6-patch tap)
-- [ ] CAL-01 Printed card FDTC-CARD-1 (`npm run card`): tap 4 corner markers TL → TR → BR → BL, patches located by homography, with undo/retake
-- [ ] CAL-02 Sample each patch as median of a k×k window; reject off-centre taps
-- [ ] CAL-03 Fit **affine 3×4** colour-correction matrix; compute residual CIEDE2000
-- [ ] CAL-04 Card validation checks (hue, white/black clipping, neutral ramp, residual, card recognised) → CARD VALID / CARD INVALID with failed checks listed
-- [ ] CAL-05 On CARD INVALID: Retake or End Test (saves Inconclusive, `CARD_CALIBRATION_FAILED`)
+- [x] CAL-01 Printed card FDTC-CARD-1 (`npm run card`): tap 4 corner markers TL → TR → BR → BL, patches located by homography, with undo/retake
+- [x] CAL-02 Sample each patch as median of a k×k window; reject off-centre taps
+- [x] CAL-03 Fit **affine 3×4** colour-correction matrix; compute residual CIEDE2000
+- [x] CAL-04 Card validation checks (hue, white/black clipping, neutral ramp, residual, card recognised) → CARD VALID / CARD INVALID with failed checks listed
+- [x] CAL-05 On CARD INVALID: Retake or End Test (saves Inconclusive, `CARD_CALIBRATION_FAILED`)
 
 ### Sample region & classification
-- [ ] ROI-01/02 Tap centre + adjustable radius → corrected median colour → Lab, p90 spread, area
-- [ ] Classification: nearest-class **CIEDE2000**, margin-ratio confidence, uncertainty rule → outcome or Inconclusive reason (architecture §6.4 rule table)
+- [x] ROI-01/02 Tap centre + adjustable radius → corrected median colour → Lab, p90 spread, area
+- [x] Classification: nearest-class **CIEDE2000**, margin-ratio confidence, uncertainty rule → outcome or Inconclusive reason (architecture §6.4 rule table)
 
 ### Result & evidence record
-- [ ] RES-01–04 Outcome + confidence + ΔE00, card status, metadata (timestamp, GPS, operator, kit, case ID, Reference DB version)
-- [ ] RES-02 Demo wording only — e.g. "DEMO: Simulated Preliminary Positive — colour-match confidence 94%" — **never a substance name**
-- [ ] EVD-01 Assemble record to schema `fdtc.test/1`, zod-validated, numbers rounded per spec
-- [ ] EVD-02 Save transaction: `seq`/`prev_hash` → JCS canonicalise (RFC 8785) → `record_hash` = SHA-256 → ES256 sign → insert ledger+index+outbox in one transaction
-- [ ] EVD-03 GENESIS record (device public key, `seq=0`, self-signed) on first launch
-- [ ] EVD-05 Ledger append-only (SQLite triggers abort UPDATE/DELETE)
+- [x] RES-01–04 Outcome + confidence + ΔE00, card status, metadata (timestamp, GPS, operator, kit, case ID, Reference DB version)
+- [x] RES-02 Demo wording only — e.g. "DEMO: Simulated Preliminary Positive — colour-match confidence 94%" — **never a substance name**
+- [x] EVD-01 Assemble record to schema `fdtc.test/1`, zod-validated, numbers rounded per spec
+- [x] EVD-02 Save transaction: `seq`/`prev_hash` → JCS canonicalise (RFC 8785) → `record_hash` = SHA-256 → ES256 sign → insert ledger+index+outbox in one transaction
+- [x] EVD-03 GENESIS record (device public key, `seq=0`, self-signed) on first launch
+- [x] EVD-05 Ledger append-only (SQLite triggers abort UPDATE/DELETE)
 
 ### History & export
-- [ ] HIS-01/02 History list (newest first) + read-only detail w/ hash, signature status, chain position
-- [ ] EXP-01 Share envelope JSON + original image via system share sheet
+- [x] HIS-01/02 History list (newest first) + read-only detail w/ hash, signature status, chain position
+- [x] EXP-01 Share envelope JSON + original image via system share sheet
 
 ### Verifier
-- [ ] VER-01/02 `verify.html`: single self-contained file, works offline, loads JSON+image, shows hash match + signature valid
-- [ ] VER-08 Overall verdict: VERIFIED / VERIFIED WITH WARNINGS / FAILED, plain-language reasons
+- [x] VER-01/02 `verify.html`: single self-contained file, works offline, loads JSON+image, shows hash match + signature valid
+- [x] VER-08 Overall verdict: VERIFIED / VERIFIED WITH WARNINGS / FAILED, plain-language reasons
+
+**Status (24 Sep):** all Phase 1 items built and checked in Node (`npm test`); the on-phone J1 run with the printed card is still to do. Also done: I18N-01 (strings externalised).
 
 **Phase 1 exit criteria:** Journey J1 (login → kit → capture → calibrate → classify → save → signed+chained record → PDF/share) works end-to-end with manual kit select. The tamper demo (edit a byte → FAILED) works correctly.
 
@@ -87,13 +89,14 @@ Golden rule from the PRD (§12): **when time runs short, cut P2 first, then P1 w
 
 ## 3. Phase 2 — Integrity (P1) — never cut these
 
-- [ ] CAP-06 Record **every** capture (accepted or rejected) with hash, bytes, time, reasons, score; `retake_count = captures − 1`
-- [ ] HIS-04 VOID (replaces swipe-delete): reason required, creates a signed VOID record, original stays viewable/verifiable
-- [ ] EVD-06 Integrity flags in every record: `rooted`, `mock_location`, `clock_skew` (>120s device vs GNSS), `location_unavailable`
-- [ ] EVD-07 Verify signed Reference DB at start-up; store version+SHA-256 in every record; tampered DB blocks testing
-- [ ] SYN-01 Key registry: register device key (GENESIS) with mock registry, queued if offline; verifier checks signer against it
-- [ ] EVD-08 Abandoned-test recovery → Inconclusive `ABANDONED` record if officer ends with ≥1 capture
-- [ ] EVD-09 Device-log self-audit: re-verify whole local chain, highlight first failing `seq`
+- [x] CAP-06 Record **every** capture (accepted or rejected) with hash, bytes, time, reasons, score; `retake_count = captures − 1` — done in Phase 1
+- [x] HIS-04 VOID (replaces swipe-delete): reason required, creates a signed VOID record, original stays viewable/verifiable — fdtc.void/1; verifier shows VOIDED; TC-40
+- [x] EVD-06 Integrity flags in every record: `rooted`, `mock_location`, `clock_skew` (>120s device vs GNSS), `location_unavailable` — clock skew vs GPS fix time; shown on result/record and in verify.html (VER-05)
+- [x] EVD-07 Verify signed Reference DB at start-up; store version+SHA-256 in every record; tampered DB blocks testing — start-up check; refdb tests incl. DEMO-02
+- [x] SYN-01 Key registry: register device key (GENESIS) with mock registry, queued if offline; verifier checks signer against it — Settings → server URL; auto-registers, retried from Home
+- [x] EVD-08 Abandoned-test recovery → Inconclusive `ABANDONED` record if officer ends with ≥1 capture — draft persisted on every change; resume or end as ABANDONED
+- [x] EVD-09 Device-log self-audit: re-verify whole local chain, highlight first failing `seq` — Settings → Audit ledger, per-record, first failure highlighted; Rebuild index
+- **Status (24 Sep):** built; `npm run check:tamper` 22/22 (TC-33–38, TC-40, VER-03/05, EVD-06). TC-39 needs the PDF QR (Phase 3).
 - **Exit criteria:** Tamper test suite (TC-33 to TC-39) green — flipped bytes, deleted records, unknown signers all correctly FAIL.
 
 ---

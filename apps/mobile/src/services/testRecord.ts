@@ -1,7 +1,6 @@
 import { parseTestRecord, type Envelope, type TestRecord } from '@fdtc/evidence-core';
 
 import { getDeviceIdentity } from '../adapters/keystore';
-import type { Operator } from './auth';
 import type { CaptureContext } from './context';
 import { workingCopy } from './image';
 import { append, APP_VERSION, PLATFORM, recordEvidenceFile } from './ledger';
@@ -18,7 +17,7 @@ export function preview(d: Draft) {
 
 /** `ctx` is the time/location shown on the result screen: the officer saw
  * exactly what gets signed. */
-export async function saveTest(d: Draft, operator: Operator, ctx: CaptureContext): Promise<Envelope<TestRecord>> {
+export async function saveTest(d: Draft, ctx: CaptureContext): Promise<Envelope<TestRecord>> {
   const identity = await getDeviceIdentity();
   const refdb = loadRefdb();
   const cap = currentCapture(d);
@@ -30,7 +29,7 @@ export async function saveTest(d: Draft, operator: Operator, ctx: CaptureContext
       buildTestRecord(
         {
           draft: d,
-          operator,
+          operator: d.operator,
           ctx,
           identity,
           refdb: { version: refdb.version, sha256: refdb.sha256 },

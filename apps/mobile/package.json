@@ -8,7 +8,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "jest --passWithNoTests",
+    "test": "npm run check:strings && npm run check:pipeline && npm run check:tamper",
     "lint": "expo lint",
     "check:pipeline": "tsx scripts/pipeline-check.ts",
     "check:tamper": "node --no-warnings ../../node_modules/tsx/dist/cli.mjs scripts/tamper-check.ts",

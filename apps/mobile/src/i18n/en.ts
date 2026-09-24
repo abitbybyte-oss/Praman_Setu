@@ -231,6 +231,14 @@ export const en = {
     voidCancel: 'Cancel',
     voidDone: (seq: number) => `VOID record saved at seq ${seq}.`,
   },
+  recovery: {
+    title: 'Unfinished test',
+    body: (kit: string, badge: string, when: string, n: number) =>
+      `${kit} test by badge ${badge}, last changed ${when}. ${n} photo(s) taken — their hashes must be accounted for.`,
+    resume: 'Resume test',
+    end: 'End as Inconclusive (abandoned)',
+    otherOfficer: (badge: string) => `Only badge ${badge} can resume it. It can be ended now; the record will name badge ${badge}.`,
+  },
   integrity: {
     title: 'Integrity flags (recorded in the signed record)',
     none: 'No integrity flags raised.',
@@ -268,6 +276,16 @@ export const en = {
     auditOk: (n: number, at: string) => `All ${n} records verified at ${at}.`,
     auditFailed: (seq: number, reason: string) => `Chain check FAILED at seq ${seq} (${reason}). Nothing is auto-repaired.`,
     rebuilt: (n: number) => `Index rebuilt from the ledger: ${n} tests.`,
+    auditRow: (seq: number, type: string, id: string) => `seq ${seq} · ${type} · ${id}`,
+    auditPass: 'OK',
+    firstFailure: 'FIRST FAILURE',
+    problems: {
+      SEQ_GAP: 'sequence gap',
+      RECORD_ALTERED: 'content altered',
+      SIGNATURE_INVALID: 'signature invalid',
+      BROKEN_LINK: 'link to previous record broken',
+      MALFORMED_ENVELOPE: 'malformed record',
+    } as Record<string, string>,
   },
   outcome: {
     PRELIMINARY_POSITIVE: {

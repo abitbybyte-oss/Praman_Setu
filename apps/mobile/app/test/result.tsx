@@ -77,7 +77,7 @@ export default function ResultScreen() {
     setBusy(true);
     setError(null);
     try {
-      const env = await saveTest(draft, operator, ctx);
+      const env = await saveTest(draft, ctx);
       clearDraft();
       setSaved(env);
     } catch (e) {
@@ -159,7 +159,7 @@ export default function ResultScreen() {
                 : S.result.locationNone
           }
         />
-        <Field label={S.result.operator} value={S.result.operatorLine(operator.name, operator.badge_id)} />
+        <Field label={S.result.operator} value={S.result.operatorLine(draft.operator.name, draft.operator.badge_id)} />
         <Field label={S.result.kit} value={S.result.kitLine(profile.display_name, draft.kitType)} />
         <Field label={S.result.caseId} value={draft.caseId ?? S.common.dash} />
         <Field label={S.result.witness} value={draft.witness ?? S.common.dash} />

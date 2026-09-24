@@ -6,6 +6,7 @@ import {
   buildGenesisRecord,
   buildLedgerExport,
   canonicalizeRecord,
+  checkEnvelope,
   jwkToPublicKey,
   sha256Hex,
   toUtf8Bytes,
@@ -230,6 +231,34 @@ export function rebuildIndex(): number {
     for (const e of envelopes) projectTest(e);
   });
   return db.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM test_index')?.n ?? 0;
+}
+
+export type AuditProblem = 'SEQ_GAP' | 'RECORD_ALTERED' | 'SIGNATURE_INVALID' | 'BROKEN_LINK' | 'MALFORMED_ENVELOPE';
+
+export interface AuditRow {
+  seq: number;
+  record_type: string;
+  record_id: string;
+  ok: boolean;
+  problem: AuditProblem | null;
+}
+
+/** EVD-09: verify every record — hash, signature (this device's key) and the
+ * link to the record before it — and report each one. Nothing is repaired. */
+export async function auditLedger(): Promise<AuditRow[]> {
+  const identity = await getDeviceIdentity();
+  const envelopes = allEnvelopes();
+  return envelopes.map((e, i) => {
+    const r = e.record as { seq: number; record_type: string; record_id: string; prev_hash: string | null };
+    let problem: AuditProblem | null = null;
+    if (r.seq !== i) problem = 'SEQ_GAP';
+    else {
+      const check = checkEnvelope(e, identity.publicKey);
+      if (!check.ok) problem = check.reason === 'RECORD_ALTERED' || check.reason === 'SIGNATURE_INVALID' ? check.reason : 'MALFORMED_ENVELOPE';
+      else if (i > 0 && r.prev_hash !== envelopes[i - 1].record_hash) problem = 'BROKEN_LINK';
+    }
+    return { seq: r.seq, record_type: r.record_type, record_id: r.record_id, ok: problem === null, problem };
+  });
 }
 
 export interface TestIndexRow {
