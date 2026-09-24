@@ -184,6 +184,7 @@ export const en = {
     confidence: (pct: string) => ` · confidence ${pct}`,
     quality: (q: number) => ` · quality ${q}`,
     sync: { PENDING: 'NOT SYNCED', SYNCING: 'SYNCING', SYNCED: 'SYNCED', FAILED: 'SYNC FAILED' } as Record<string, string>,
+    voided: 'VOIDED',
   },
   record: {
     title: (seq: number) => `Record · seq ${seq}`,
@@ -212,6 +213,18 @@ export const en = {
     shareJsonTitle: 'Share evidence record',
     sharePhotoTitle: 'Share original photo (send as a file)',
     verifyHint: 'To verify independently: share the JSON and the photo (as a file, not a compressed image), then open verify.html.',
+    voidedTitle: 'VOIDED — do not rely on this result',
+    voidedBody: (badge: string, when: string, reason: string) => `Voided by badge ${badge} at ${when}. Reason: ${reason}`,
+    voidedNote: 'The original record is kept unchanged and still verifies. The void is a separate signed record.',
+    voidAction: 'Void this record',
+    voidTitle: 'Void record',
+    voidExplain: 'Voiding does not delete anything. A signed VOID record is added to the ledger and the original stays viewable and verifiable.',
+    voidReason: 'Reason (required)',
+    voidReasonPlaceholder: 'e.g. Wrong kit type selected; test repeated as …',
+    voidTooShort: (n: number) => `Enter at least ${n} characters.`,
+    voidConfirm: 'Sign VOID record',
+    voidCancel: 'Cancel',
+    voidDone: (seq: number) => `VOID record saved at seq ${seq}.`,
   },
   outcome: {
     PRELIMINARY_POSITIVE: {

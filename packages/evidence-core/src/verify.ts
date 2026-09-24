@@ -73,6 +73,12 @@ export interface RecordSummary {
   record_type: string | null;
   record_hash: string;
   created_at: string | null;
+  /** TEST records: the outcome as signed. */
+  outcome: string | null;
+  /** Set when a VOID in the same bundle targets this record (ARCHITECTURE §11). */
+  voided: { by_badge: string | null; at: string | null; reason: string | null; void_record_id: string | null } | null;
+  /** VOID records: the record they void. */
+  voids: string | null;
 }
 
 export interface VerifyReport {
@@ -126,7 +132,50 @@ function summarise(envelope: Envelope): RecordSummary {
     record_type: field(record, "record_type"),
     record_hash: envelope.record_hash,
     created_at: field(record, "created_at"),
+    outcome: field((record.classification ?? {}) as LooseRecord, "outcome"),
+    voided: null,
+    voids: field((record.target ?? {}) as LooseRecord, "record_id"),
   };
+}
+
+/** Void awareness: mark voided records and check every VOID points at an
+ * exact record version in this bundle. A voided record still verifies. */
+function applyVoids(records: Envelope[], summaries: RecordSummary[]): Check | null {
+  const byId = new Map(records.map((e, i) => [field(e.record as LooseRecord, "record_id"), i]));
+  const lines: string[] = [];
+  const broken: string[] = [];
+  for (const envelope of records) {
+    const record = envelope.record as LooseRecord;
+    if (record.record_type !== "VOID") continue;
+    const target = (record.target ?? {}) as LooseRecord;
+    const targetId = field(target, "record_id");
+    const index = targetId === null ? undefined : byId.get(targetId);
+    const operator = (record.operator ?? {}) as LooseRecord;
+    const who = field(operator, "badge_id");
+    const reason = field(record, "reason");
+    if (index === undefined) {
+      lines.push(`record ${targetId ?? "?"} (not in this file) was VOIDED by badge ${who ?? "?"}: ${reason ?? ""}`);
+      continue;
+    }
+    if (records[index].record_hash !== target.record_hash) {
+      broken.push(`the VOID at seq ${String(record.seq)} names record ${targetId} but a different version of it`);
+      continue;
+    }
+    summaries[index].voided = { by_badge: who, at: field(record, "created_at"), reason, void_record_id: field(record, "record_id") };
+    lines.push(`seq ${String((records[index].record as LooseRecord).seq)} was VOIDED by badge ${who ?? "?"} at ${field(record, "created_at") ?? "?"}: ${reason ?? ""}`);
+  }
+  if (broken.length) {
+    return { id: "VOIDS", label: "Void records", status: "FAIL", detail: `${broken.join("; ")}.` };
+  }
+  if (lines.length) {
+    return {
+      id: "VOIDS",
+      label: "Void records",
+      status: "WARN",
+      detail: `${lines.join("; ")}. A voided record still verifies, but must not be relied on.`,
+    };
+  }
+  return null;
 }
 
 /** Public keys usable for verification, keyed by key_id. The registry is the
@@ -398,9 +447,13 @@ export function verifyBundle(input: VerifyInput): VerifyReport {
     });
   }
 
+  const summaries = records.map(summarise);
+  const voidCheck = applyVoids(records, summaries);
+  if (voidCheck) checks.push(voidCheck);
+
   const hasFailure = checks.some((c) => c.status === "FAIL");
   const hasWarning = checks.some((c) => c.status === "WARN" || c.status === "SKIPPED");
   const verdict: Verdict = hasFailure ? "FAILED" : hasWarning ? "VERIFIED_WITH_WARNINGS" : "VERIFIED";
 
-  return { verdict, checks, records: records.map(summarise) };
+  return { verdict, checks, records: summaries };
 }

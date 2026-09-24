@@ -165,7 +165,7 @@ function renderRecords(report: VerifyReport): HTMLTableSectionElement {
   const body = document.createElement("tbody");
 
   const header = document.createElement("tr");
-  for (const heading of ["Seq", "Type", "Created", "Record hash"]) {
+  for (const heading of ["Seq", "Type", "Created", "Status", "Record hash"]) {
     const th = document.createElement("th");
     th.textContent = heading;
     header.append(th);
@@ -178,6 +178,11 @@ function renderRecords(report: VerifyReport): HTMLTableSectionElement {
       record.seq === null ? "—" : String(record.seq),
       record.record_type ?? "—",
       record.created_at ?? "—",
+      record.voided
+        ? `VOIDED by badge ${record.voided.by_badge ?? "?"}: ${record.voided.reason ?? ""}`
+        : record.voids
+          ? `voids ${record.voids.slice(0, 8)}`
+          : (record.outcome ?? "").replace(/_/g, " "),
     ];
     for (const value of cells) {
       const td = document.createElement("td");

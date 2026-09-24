@@ -2,12 +2,15 @@ import { checkEnvelope, type TestRecord } from '@fdtc/evidence-core';
 import * as Sharing from 'expo-sharing';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Text } from 'react-native';
+import { Image, StyleSheet, Text, TextInput } from 'react-native';
+import { VOID_REASON_MIN } from '@fdtc/evidence-core';
 
 import { getDeviceIdentity } from '@/src/adapters/keystore';
 import { label, pct, S, when } from '@/src/i18n';
 import { writeJsonFile } from '@/src/services/evidence';
-import { envelopeById, evidencePath, exportLedger } from '@/src/services/ledger';
+import { envelopeById, evidencePath, exportLedger, voidFor } from '@/src/services/ledger';
+import { voidTest } from '@/src/services/void';
+import { useSession } from '@/src/workflow/store';
 import { Button, C, Field, Note, Panel, Row, Screen } from '@/src/ui/kit';
 
 /** S-10 Record detail (HIS-02) and share (EXP-01). */
@@ -19,6 +22,11 @@ export default function RecordScreen() {
   const envelope = envelopeById(id);
   const [sig, setSig] = useState(S.record.sigChecking);
   const [error, setError] = useState<string | null>(null);
+  const operator = useSession((st) => st.operator);
+  const [voiding, setVoiding] = useState(false);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [version, setVersion] = useState(0); // re-read after a void
 
   useEffect(() => {
     if (!envelope) return;
@@ -63,6 +71,24 @@ export default function RecordScreen() {
   };
 
   const loc = r.location;
+  const v = voidFor(r.record_id);
+  void version;
+
+  const confirmVoid = async () => {
+    if (!operator) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await voidTest(r.record_id, reason, operator);
+      setVoiding(false);
+      setReason('');
+      setVersion((n) => n + 1);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <Screen
@@ -73,8 +99,15 @@ export default function RecordScreen() {
           <Button label={S.record.sharePhoto} kind="secondary" onPress={sharePhoto} disabled={!photo} />
         </Row>
       }>
+      {v ? (
+        <Panel tone="bad" title={S.record.voidedTitle}>
+          <Note tone="bad">{S.record.voidedBody(v.operator.badge_id, when(v.created_at), v.reason)}</Note>
+          <Note>{S.record.voidedNote}</Note>
+        </Panel>
+      ) : null}
+
       <Panel tone={TONE[cls.outcome]}>
-        <Text style={{ color: C.text, fontSize: 19, fontWeight: '800' }}>{wording.title}</Text>
+        <Text style={[{ color: C.text, fontSize: 19, fontWeight: '800' }, v ? styles.struck : null]}>{wording.title}</Text>
         {cls.outcome !== 'INCONCLUSIVE' ? <Text style={{ color: C.text }}>{S.result.confidence(pct(cls.confidence))}</Text> : null}
         {cls.inconclusive_reasons.map((x) => (
           <Note key={x}>• {label(S.reason, x)}</Note>
@@ -120,7 +153,37 @@ export default function RecordScreen() {
         <Field label={S.result.refdb} value={`${r.reference_db.version} · ${r.reference_db.sha256.slice(0, 16)}…`} mono />
       </Panel>
       <Note>{S.record.verifyHint}</Note>
+
+      {!v && operator?.role === 'OFFICER' ? (
+        voiding ? (
+          <Panel tone="bad" title={S.record.voidTitle}>
+            <Note>{S.record.voidExplain}</Note>
+            <Text style={styles.label}>{S.record.voidReason}</Text>
+            <TextInput
+              style={styles.input}
+              value={reason}
+              onChangeText={setReason}
+              multiline
+              placeholder={S.record.voidReasonPlaceholder}
+              placeholderTextColor={C.dim}
+            />
+            {reason.trim().length < VOID_REASON_MIN ? <Note>{S.record.voidTooShort(VOID_REASON_MIN)}</Note> : null}
+            <Row>
+              <Button label={S.record.voidCancel} kind="secondary" onPress={() => setVoiding(false)} disabled={busy} />
+              <Button label={S.record.voidConfirm} kind="danger" onPress={confirmVoid} busy={busy} disabled={reason.trim().length < VOID_REASON_MIN} />
+            </Row>
+          </Panel>
+        ) : (
+          <Button label={S.record.voidAction} kind="danger" onPress={() => setVoiding(true)} />
+        )
+      ) : null}
       {error ? <Note tone="bad">{error}</Note> : null}
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  struck: { textDecorationLine: 'line-through' },
+  label: { color: C.muted, fontSize: 13 },
+  input: { backgroundColor: C.bg, borderColor: C.border, borderWidth: 1, borderRadius: 8, color: C.text, fontSize: 15, padding: 10, minHeight: 70, textAlignVertical: 'top' },
+});

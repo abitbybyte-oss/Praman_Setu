@@ -14,6 +14,7 @@ import {
   type Es256Signature,
   type LedgerExport,
   type TestRecord,
+  type VoidRecord,
 } from '@fdtc/evidence-core';
 
 import { audit, getDb } from '../adapters/db';
@@ -70,8 +71,13 @@ function insertEnvelope(envelope: Envelope, payloadText: string): void {
   projectTest(envelope);
 }
 
-/** test_index is a projection of TEST records; it can be rebuilt from ledger. */
+/** test_index is a projection of the ledger; it can be rebuilt at any time. */
 function projectTest(envelope: Envelope): void {
+  const v = envelope.record as { record_type?: string; target?: { record_id: string } };
+  if (v.record_type === 'VOID' && v.target) {
+    getDb().runSync('UPDATE test_index SET voided = 1 WHERE record_id = ?', v.target.record_id);
+    return;
+  }
   const r = envelope.record as Partial<TestRecord> & { schema?: string };
   if (r.schema !== 'fdtc.test/1' || !r.classification) return;
   getDb().runSync(
@@ -204,6 +210,28 @@ export async function auditChain(): Promise<ReturnType<typeof verifyChain>> {
   );
 }
 
+/** The VOID record for a TEST record, if any. */
+export function voidFor(recordId: string): VoidRecord | null {
+  const rows = getDb().getAllSync<{ payload: string }>("SELECT payload FROM ledger WHERE record_type = 'VOID'");
+  for (const row of rows) {
+    const v = JSON.parse(row.payload) as VoidRecord;
+    if (v.target?.record_id === recordId) return v;
+  }
+  return null;
+}
+
+/** EVD-09 / ARCHITECTURE §8.1 "Rebuild index": drop the projection and
+ * re-derive it from the ledger, in seq order. The ledger itself is untouched. */
+export function rebuildIndex(): number {
+  const envelopes = allEnvelopes();
+  const db = getDb();
+  db.withTransactionSync(() => {
+    db.runSync('DELETE FROM test_index');
+    for (const e of envelopes) projectTest(e);
+  });
+  return db.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM test_index')?.n ?? 0;
+}
+
 export interface TestIndexRow {
   record_id: string;
   seq: number;
@@ -215,6 +243,7 @@ export interface TestIndexRow {
   confidence: number | null;
   quality_score: number | null;
   evidence_sha256: string | null;
+  voided: number;
   sync_status: string;
 }
 

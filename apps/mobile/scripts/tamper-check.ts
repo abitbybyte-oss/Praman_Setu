@@ -13,6 +13,7 @@ import {
   buildLedgerExport,
   generateKeyPair,
   parseTestRecord,
+  parseVoidRecord,
   publicKeyFromPrivateKey,
   publicKeyToJwk,
   sealRecord,
@@ -182,6 +183,48 @@ removed.records.splice(2, 1);
   expect('records shuffled in the file still verify (ordered by seq)', r.verdict !== 'FAILED', r.verdict);
 }
 
+// ---- TC-40: void a record — original still verifies and shows VOIDED ----------------------
+const target = chain[1];
+const voidRecord = parseVoidRecord({
+  schema: 'fdtc.void/1',
+  record_type: 'VOID',
+  record_id: crypto.randomUUID(),
+  device_id: genesis.device_id,
+  key_id: keyId,
+  seq: chain.length,
+  prev_hash: chain[chain.length - 1].record_hash,
+  created_at: new Date().toISOString(),
+  simulated: true,
+  operator: { badge_id: '1001', role: 'OFFICER', auth_method: 'PIN' },
+  target: { record_id: (target.record as { record_id: string }).record_id, record_hash: target.record_hash },
+  reason: 'Wrong kit type selected; repeated as a new test',
+  app: { version: '0.1.0', platform: 'node' },
+});
+const withVoid = buildLedgerExport([...chain, sealRecord(voidRecord as never, deviceKey, keyId) as Envelope], genesis.device_id);
+{
+  const r = verifyBundle({ bundle: withVoid, registry, images: [{ name: 'photo.jpg', bytes: photo }] });
+  const voided = r.records.find((x) => x.seq === 1)?.voided;
+  expect(
+    'TC-40 voided record still verifies and is shown as VOIDED',
+    r.verdict === 'VERIFIED_WITH_WARNINGS' && !!voided && voided.by_badge === '1001' && check(r, 'VOIDS')?.status === 'WARN',
+    check(r, 'VOIDS')?.detail
+  );
+  let rejected = false;
+  try {
+    parseVoidRecord({ ...voidRecord, reason: 'oops' });
+  } catch {
+    rejected = true;
+  }
+  expect('TC-40 VOID without a real reason is rejected by the schema', rejected);
+}
+{
+  // A VOID that names the record but a different version (hash) of it.
+  const bad = { ...voidRecord, target: { ...voidRecord.target, record_hash: 'f'.repeat(64) } };
+  const bundle = buildLedgerExport([...chain, sealRecord(bad as never, deviceKey, keyId) as Envelope], genesis.device_id);
+  const r = verifyBundle({ bundle, registry });
+  expect('TC-40 VOID pointing at a different version of the record', r.verdict === 'FAILED' && check(r, 'VOIDS')?.status === 'FAIL', check(r, 'VOIDS')?.detail);
+}
+
 // ---- Demo files for verify.html ------------------------------------------------------------
 const out = join(__dirname, '../../../tools/demo/tamper/dist');
 mkdirSync(out, { recursive: true });
@@ -192,6 +235,7 @@ json('2-tampered-outcome.json', alteredOutcome);
 writeFileSync(join(out, '3-tampered-photo.jpg'), flipped);
 json('4-forged-signature.json', forged);
 json('5-record-deleted.json', removed);
+json('6-with-void.json', withVoid);
 json('registry.json', registry);
 writeFileSync(
   join(out, 'README.txt'),
@@ -203,6 +247,7 @@ writeFileSync(
     '  1-original-ledger.json + 3-tampered-photo.jpg   -> FAILED: photograph altered',
     '  4-forged-signature.json                         -> FAILED: signature invalid',
     '  5-record-deleted.json                           -> FAILED: sequence broken',
+    '  6-with-void.json                                -> VERIFIED WITH WARNINGS: seq 1 VOIDED',
     '',
   ].join('\n')
 );
