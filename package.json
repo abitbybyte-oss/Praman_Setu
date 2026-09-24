@@ -1,0 +1,19 @@
+{
+  "name": "praman-setu",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "fixtures": "tsx tools/fixtures/scripts/generate-crypto-vectors.ts",
+    "build:refdb": "npm run build --workspace @fdtc/refdb",
+    "build:verify": "npm run build --workspace @fdtc/verify",
+    "server": "npm run start --workspace @fdtc/mock-server"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "~5.9.3"
+  }
+}
