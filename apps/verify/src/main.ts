@@ -72,7 +72,8 @@ registryFileInput.addEventListener("change", async () => {
 });
 
 fetchRegistryButton.addEventListener("click", async () => {
-  const url = registryUrlInput.value.trim();
+  let url = registryUrlInput.value.trim();
+  if (url && !/\/v1\/registry\/?$/.test(url)) url = `${url.replace(/\/+$/, "")}/v1/registry`;
   if (!url) {
     setRegistryStatus("Enter the agency server's registry URL first.", "fail");
     return;
