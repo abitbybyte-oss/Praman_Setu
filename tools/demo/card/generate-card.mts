@@ -22,7 +22,15 @@ interface SourceCard {
   layout: CardLayout;
 }
 
-const refdb = JSON.parse(readFileSync(refdbPath, "utf8")) as { refdb_version: string; cards: Record<string, SourceCard> };
+interface SourceKit {
+  display_name: string;
+  classes: { id: string; outcome: string; label: string; exemplars_lab: Lab[] }[];
+}
+const refdb = JSON.parse(readFileSync(refdbPath, "utf8")) as {
+  refdb_version: string;
+  cards: Record<string, SourceCard>;
+  kits: Record<string, SourceKit>;
+};
 const card = refdb.cards[CARD_VERSION];
 if (!card?.layout) throw new Error(`${CARD_VERSION} has no layout in the Reference DB`);
 const L = card.layout;
@@ -92,6 +100,21 @@ const swatchRows = PATCH_ORDER.map((id) => {
   return `<tr><td><span class="sw" style="background:${hex(lab)}"></span>${id}</td><td>${lab.join(", ")}</td><td>${rgb.join(", ")}</td><td>${hex(lab)}</td></tr>`;
 }).join("");
 
+// Simulated reaction swatches: one disc per kit class (first exemplar), so a
+// demo can produce each outcome without any real reagent.
+const swatches = Object.entries(refdb.kits)
+  .map(([type, kit]) => {
+    const discs = kit.classes
+      .map((c) => {
+        const lab = c.exemplars_lab[0];
+        const tag = c.outcome === "PRELIMINARY_POSITIVE" ? "POS" : "NEG";
+        return `<div class="swd"><svg width="26mm" height="26mm" viewBox="0 0 26 26"><rect width="26" height="26" fill="#fff"/><circle cx="13" cy="13" r="11" fill="${hex(lab)}"/></svg><div>${type} ${tag}</div><div class="mut">${c.id}</div></div>`;
+      })
+      .join("");
+    return `<div class="swk"><b>${kit.display_name}</b><div class="swrow">${discs}</div></div>`;
+  })
+  .join("");
+
 const svg = cardSvg();
 const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>${CARD_VERSION} printable card</title>
@@ -106,6 +129,12 @@ const html = `<!doctype html>
   td, th { border: 0.2mm solid #bbb; padding: 1mm 2mm; text-align: left; }
   .sw { display: inline-block; width: 4mm; height: 4mm; margin-right: 2mm; vertical-align: middle; border: 0.2mm solid #999; }
   .warn { color: #8b1a1a; font-weight: 700; }
+  .swgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin-top: 3mm; }
+  .swk { border: 0.2mm solid #bbb; padding: 2mm; font-size: 9pt; }
+  .swrow { display: flex; gap: 4mm; margin-top: 1.5mm; }
+  .swd { text-align: center; font-size: 8pt; }
+  .mut { color: #666; font-size: 7pt; }
+  .pb { break-before: page; }
   @media screen { body { background: #eee; } .sheet { background: #fff; margin: 10mm auto; padding: 12mm; box-shadow: 0 0 4mm #0003; } }
 </style></head>
 <body><div class="sheet">
@@ -121,6 +150,10 @@ const html = `<!doctype html>
   <div class="cards">${svg}${svg}</div>
   <p><b>Printed colours will not exactly match these values.</b> For the validation study, measure the printed patches (spectrophotometer, or averaged captures under daylight) and update <code>packages/refdb/src/refdb.source.json</code>, then rebuild the Reference DB.</p>
   <table><tr><th>Patch</th><th>Reference Lab (D65)</th><th>sRGB</th><th>Hex</th></tr>${swatchRows}</table>
+  <h1 class="pb">Simulated reaction swatches</h1>
+  <p class="warn">SIMULATED — NOT A DRUG TEST. Printed colours stand in for a kit's reaction area.</p>
+  <p>Cut out a disc and place it where the kit's reaction area would be, next to the reference card. Select the matching kit type in the app. A POS disc should read as <i>Simulated Preliminary Positive</i>, a NEG disc as <i>Simulated Preliminary Negative</i>; anything else reads Inconclusive. Printer colour error can push a disc outside its class — that is the Inconclusive path working as designed.</p>
+  <div class="swgrid">${swatches}</div>
   <p style="margin-top:3mm;color:#555">Generated from Reference DB ${refdb.refdb_version}. Card QR payload: <code>${qrPayload}</code></p>
 </div></body></html>
 `;
