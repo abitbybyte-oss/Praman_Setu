@@ -7,7 +7,8 @@ import { label, pct, S, when } from '@/src/i18n';
 import { collectContext, raisedFlags, type CaptureContext } from '@/src/services/context';
 import { kit, loadRefdb } from '@/src/services/refdb';
 import { preview, saveTest } from '@/src/services/testRecord';
-import { Button, C, Field, Note, Panel, Row, Screen } from '@/src/ui/kit';
+import { Button, C, Chip, Chips, Field, Note, Panel, Row, Screen } from '@/src/ui/kit';
+import { captureTiming } from '@/src/services/recordBuilder';
 import { guards, useSession } from '@/src/workflow/store';
 
 /** S-08 Result (RES-01..04, RES-07, RES-09) and Save (EVD-01, EVD-02).
@@ -135,16 +136,45 @@ export default function ResultScreen() {
             />
             <Field label={S.result.labLine} value={s.roi.lab.map((v) => v.toFixed(1)).join(', ')} />
             <Field label={S.result.uncertainty} value={S.result.uncertaintyLine(cls.uncertainty_de00.toFixed(2), s.roi.spread_de00_p90.toFixed(2))} />
-            <Field
-              label={S.result.quality}
-              value={S.result.qualityLine(
-                s.quality.score,
-                s.quality.band,
-                s.quality.reasons.length ? s.quality.reasons.map((q) => label(S.qualityComponent, q)).join(', ') : null
-              )}
-            />
           </>
         ) : null}
+      </Panel>
+
+      {s ? (
+        <Panel title={S.result.quality} tone={s.quality.band === 'GOOD' ? 'good' : s.quality.band === 'FAIR' ? 'warn' : 'bad'}>
+          <Text style={{ color: C.text, fontSize: 18, fontWeight: '800' }}>
+            {s.quality.band === 'POOR'
+              ? S.result.qualityPoor(s.quality.reasons.map((q) => label(S.qualityComponent, q)).join(', '))
+              : S.result.qualityHeadline(s.quality.score, label(S.result.band, s.quality.band))}
+          </Text>
+          {s.quality.reasons.length && s.quality.band !== 'POOR' ? (
+            <Note>{S.result.qualityLine(s.quality.score, label(S.result.band, s.quality.band), s.quality.reasons.map((q) => label(S.qualityComponent, q)).join(', '))}</Note>
+          ) : null}
+        </Panel>
+      ) : null}
+
+      <Panel title={S.result.kitSection}>
+        <Field label={S.kit.fields.type} value={`${profile.display_name} (${draft.kitType})`} />
+        {draft.kitScan?.kit ? (
+          <>
+            <Field label={S.kit.fields.id} value={draft.kitScan.kit.kit_id} />
+            <Field label={S.kit.fields.batch} value={draft.kitScan.kit.batch} />
+            <Field label={S.kit.fields.expiry} value={draft.kitScan.kit.expiry_date} />
+          </>
+        ) : null}
+        <Field label={S.kit.fields.status} value={label(S.kit.status, draft.kitScan?.status ?? 'NOT_CHECKED')} />
+      </Panel>
+
+      <Panel title={S.result.timingSection} tone={captureTiming(draft).in_window === false ? 'bad' : undefined}>
+        {draft.timer ? (
+          <>
+            <Field label={S.result.timingRequired} value={`${S.result.seconds(String(draft.timer.required_s))}–${S.result.seconds(String(draft.timer.max_s))}${draft.timer.mode === 'DEMO_PROTOCOL' ? S.result.demoProtocol : ''}`} />
+            <Field label={S.result.timingActual} value={captureTiming(draft).elapsed_s == null ? S.common.dash : S.result.seconds(captureTiming(draft).elapsed_s!.toFixed(1))} />
+            <Field label={S.result.timingWindow} value={captureTiming(draft).in_window === false ? S.result.no : S.result.yes} />
+          </>
+        ) : (
+          <Note>{S.result.timingNoTimer}</Note>
+        )}
       </Panel>
 
       <Panel title={S.result.details}>
@@ -160,7 +190,6 @@ export default function ResultScreen() {
           }
         />
         <Field label={S.result.operator} value={S.result.operatorLine(draft.operator.name, draft.operator.badge_id)} />
-        <Field label={S.result.kit} value={S.result.kitLine(profile.display_name, draft.kitType)} />
         <Field label={S.result.caseId} value={draft.caseId ?? S.common.dash} />
         <Field label={S.result.witness} value={draft.witness ?? S.common.dash} />
         <Field label={S.result.captures} value={S.result.capturesLine(draft.captures.length)} />
@@ -170,9 +199,11 @@ export default function ResultScreen() {
       {ctx ? (
         <Panel title={S.integrity.title} tone={raisedFlags(ctx.integrity).length ? 'warn' : undefined}>
           {raisedFlags(ctx.integrity).length === 0 ? <Note>{S.integrity.none}</Note> : null}
-          {raisedFlags(ctx.integrity).map((f) => (
-            <Note key={f} tone="warn">• {S.integrity.flags[f]}</Note>
-          ))}
+          <Chips>
+            {raisedFlags(ctx.integrity).map((f) => (
+              <Chip key={f} text={S.integrity.flags[f]} />
+            ))}
+          </Chips>
           <Note>{S.integrity.clockLine(ctx.clock.skew_s === null ? null : String(ctx.clock.skew_s))}</Note>
           <Note>{S.integrity.note}</Note>
         </Panel>

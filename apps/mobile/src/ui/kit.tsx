@@ -109,6 +109,21 @@ export function Note({ children, tone }: { children: ReactNode; tone?: 'bad' | '
   return <Text style={[s.note, tone === 'bad' && { color: C.red }, tone === 'warn' && { color: C.amber }]}>{children}</Text>;
 }
 
+/** RES-08: amber chip with text (never colour alone). */
+export function Chip({ text, tone = 'warn' }: { text: string; tone?: 'warn' | 'bad' | 'good' }) {
+  const bg = tone === 'good' ? '#123d27' : tone === 'bad' ? '#4a1717' : '#4a3710';
+  const fg = tone === 'good' ? C.green : tone === 'bad' ? '#ff8a8a' : C.amber;
+  return (
+    <View style={[s.chip, { backgroundColor: bg, borderColor: fg }]}>
+      <Text style={[s.chipText, { color: fg }]}>{text}</Text>
+    </View>
+  );
+}
+
+export function Chips({ children }: { children: ReactNode }) {
+  return <View style={s.chips}>{children}</View>;
+}
+
 export function Row({ children }: { children: ReactNode }) {
   return <View style={s.row}>{children}</View>;
 }
@@ -145,4 +160,7 @@ export const s = StyleSheet.create({
   mono: { fontFamily: 'monospace', fontSize: 12.5 },
   note: { color: C.muted, fontSize: 14, lineHeight: 20 },
   row: { flexDirection: 'row', gap: 10 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },
+  chipText: { fontSize: 12.5, fontWeight: '700' },
 });

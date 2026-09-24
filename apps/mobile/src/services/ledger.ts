@@ -19,6 +19,7 @@ import {
 } from '@fdtc/evidence-core';
 
 import { audit, getDb } from '../adapters/db';
+import { historyQuery, type HistoryFilters } from './historyQuery';
 import { getDeviceIdentity, prepareSigner, signSync } from '../adapters/keystore';
 
 /** Append-only device ledger (ARCHITECTURE §7.5, §7.6, §8).
@@ -276,12 +277,9 @@ export interface TestIndexRow {
   sync_status: string;
 }
 
-export function listTests(): TestIndexRow[] {
-  return getDb().getAllSync<TestIndexRow>(
-    `SELECT t.*, COALESCE(o.status, 'PENDING') AS sync_status
-       FROM test_index t LEFT JOIN sync_outbox o ON o.record_id = t.record_id
-      ORDER BY t.created_at DESC`
-  );
+export function listTests(filters: HistoryFilters = {}): TestIndexRow[] {
+  const { sql, params } = historyQuery(filters);
+  return getDb().getAllSync<TestIndexRow>(sql, params);
 }
 
 export function recordEvidenceFile(f: { sha256: string; recordId: string; kind: string; path: string; bytes: number; accepted: boolean }): void {

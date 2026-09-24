@@ -141,7 +141,20 @@ export default function RecordScreen() {
       <Panel title={S.record.details}>
         <Field label={S.record.created} value={when(r.created_at)} />
         <Field label={S.result.operator} value={S.record.operatorLine(r.operator.badge_id, label(S.role, r.operator.role))} />
-        <Field label={S.result.kit} value={`${r.kit.display_name} (${r.kit.kit_type})`} />
+        <Field
+          label={S.result.kit}
+          value={`${r.kit.display_name} (${r.kit.kit_type}) · ${label(S.kit.status, r.kit.status)}${r.kit.kit_id ? ` · ${r.kit.kit_id} · ${r.kit.batch} · exp ${r.kit.expiry_date}` : ''}`}
+        />
+        <Field
+          label={S.result.timingSection}
+          value={
+            r.timing.timer === 'NONE'
+              ? S.result.timingNoTimer
+              : `${S.result.seconds(String(r.timing.elapsed_s ?? '—'))} / ${S.result.seconds(String(r.timing.required_s))}–${S.result.seconds(String(r.timing.max_s))} · ${
+                  r.timing.in_window === false ? S.result.no : S.result.yes
+                }${r.timing.timer === 'DEMO_PROTOCOL' ? S.result.demoProtocol : ''}`
+          }
+        />
         <Field label={S.record.caseWitness} value={`${r.case.case_id ?? S.common.dash} / ${r.case.witness_badge_id ?? S.common.dash}`} />
         <Field label={S.result.card} value={r.calibration ? `${r.calibration.card_version} · ${r.calibration.card_status}` : S.common.dash} />
         {r.measurement ? <Field label={S.record.sampleLab} value={r.measurement.lab.join(', ')} /> : null}
