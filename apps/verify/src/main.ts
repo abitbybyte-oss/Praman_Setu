@@ -1,4 +1,4 @@
-import { verifyBundle, type Check, type KeyRegistry, type VerifyReport } from "@fdtc/evidence-core";
+import { parseBundle, verifyBundle, verifyQrPayload, type Check, type KeyRegistry, type VerifyReport } from "@fdtc/evidence-core";
 
 /** verify.html is only a UI. Every rule lives in evidence-core, which the app,
  * the mock server and this page all share (ARCHITECTURE §11).
@@ -20,6 +20,32 @@ const registryStatus = $<HTMLParagraphElement>("registryStatus");
 const fetchRegistryButton = $<HTMLButtonElement>("fetchRegistry");
 const verifyButton = $<HTMLButtonElement>("verify");
 const results = $<HTMLDivElement>("results");
+const qrText = $<HTMLTextAreaElement>("qrText");
+const qrButton = $<HTMLButtonElement>("verifyQr");
+const qrResult = $<HTMLDivElement>("qrResult");
+
+// VER-06: verify from the PDF QR string alone (TC-39).
+qrButton.addEventListener("click", () => {
+  const parsed = bundle ? parseBundle(bundle) : null;
+  const report = verifyQrPayload(qrText.value, { registry, records: parsed && parsed.ok ? parsed.records : undefined });
+  const good = report.verdict === "SIGNATURE_VALID";
+  qrResult.className = `verdict ${good ? "v-pass" : report.verdict === "UNKNOWN_SIGNER" ? "v-warn" : "v-fail"}`;
+  $("qrTitle").textContent =
+    report.verdict === "SIGNATURE_VALID"
+      ? "SIGNATURE VALID"
+      : report.verdict === "UNKNOWN_SIGNER"
+        ? "SIGNER NOT CHECKED"
+        : report.verdict === "MALFORMED"
+          ? "NOT A VERIFICATION CODE"
+          : "FAILED";
+  const matchNote =
+    report.matches_record === true
+      ? " The loaded record file contains a record with exactly this hash."
+      : report.matches_record === false
+        ? " The loaded record file does NOT contain a record with this hash."
+        : "";
+  $("qrText2").textContent = report.detail + matchNote;
+});
 
 let bundle: unknown = null;
 let registry: KeyRegistry | null = null;

@@ -14,6 +14,8 @@ import {
   generateKeyPair,
   parseTestRecord,
   parseVoidRecord,
+  formatQrPayload,
+  verifyQrPayload,
   publicKeyFromPrivateKey,
   publicKeyToJwk,
   sealRecord,
@@ -244,6 +246,15 @@ const withVoid = buildLedgerExport([...chain, sealRecord(voidRecord as never, de
   chain.pop();
 }
 
+// ---- TC-39: verify from the PDF QR string alone -----------------------------------------------
+{
+  const qr = formatQrPayload(chain[1]);
+  expect('TC-39 QR string: signature valid for that hash and key', verifyQrPayload(qr, { registry }).verdict === 'SIGNATURE_VALID');
+  const parts = qr.split('|');
+  const edited = [parts[0], parts[1], parts[2].replace(/^./, (c) => (c === '0' ? '1' : '0')), parts[3], parts[4]].join('|');
+  expect('TC-39 QR string with one hash digit changed → FAILED', verifyQrPayload(edited, { registry }).verdict === 'SIGNATURE_INVALID');
+}
+
 // ---- EVD-06: clock-skew rule ---------------------------------------------------------------
 {
   const now = Date.parse('2026-09-24T10:00:00.000Z');
@@ -270,6 +281,8 @@ json('4-forged-signature.json', forged);
 json('5-record-deleted.json', removed);
 json('6-with-void.json', withVoid);
 json('registry.json', registry);
+writeFileSync(join(out, '7-qr-code.txt'), formatQrPayload(chain[1]) + '
+');
 writeFileSync(
   join(out, 'README.txt'),
   [
@@ -281,6 +294,7 @@ writeFileSync(
     '  4-forged-signature.json                         -> FAILED: signature invalid',
     '  5-record-deleted.json                           -> FAILED: sequence broken',
     '  6-with-void.json                                -> VERIFIED WITH WARNINGS: seq 1 VOIDED',
+    '  7-qr-code.txt  (paste into the QR box)          -> SIGNATURE VALID',
     '',
   ].join('\n')
 );

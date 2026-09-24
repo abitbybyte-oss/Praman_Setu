@@ -3,7 +3,10 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { S, when } from '@/src/i18n';
 import { demoTiming, setDemoTiming } from '@/src/services/demo';
-import { auditLedger, rebuildIndex, type AuditRow } from '@/src/services/ledger';
+import * as Sharing from 'expo-sharing';
+
+import { writeJsonFile } from '@/src/services/evidence';
+import { auditLedger, exportLedger, rebuildIndex, type AuditRow } from '@/src/services/ledger';
 import { pingServer, registerDevice, registration, serverUrl, setServerUrl, type Registration } from '@/src/services/registry';
 import { Button, C, Field, Note, Panel, Row, Screen } from '@/src/ui/kit';
 import { useSession } from '@/src/workflow/store';
@@ -107,6 +110,15 @@ export default function SettingsScreen() {
           <Button label={S.settings.audit} kind="secondary" onPress={runAudit} busy={busy === 'audit'} />
           <Button label={S.settings.rebuild} kind="secondary" onPress={rebuild} busy={busy === 'rebuild'} />
         </Row>
+        <Note>{S.settings.exportHelp}</Note>
+        <Button
+          label={S.settings.exportLedger}
+          kind="secondary"
+          onPress={async () => {
+            const file = writeJsonFile(`fdtc-ledger-${new Date().toISOString().slice(0, 10)}.json`, await exportLedger());
+            await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: S.settings.exportLedger });
+          }}
+        />
         {auditResult ? <Note tone={auditResult.ok ? undefined : 'bad'}>{auditResult.text}</Note> : null}
         {rows.map((row) => {
           const first = !row.ok && rows.find((x) => !x.ok) === row;

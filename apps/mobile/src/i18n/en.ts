@@ -358,6 +358,8 @@ export const en = {
     ledger: 'Evidence ledger',
     ledgerHelp: 'Audit re-verifies every record’s hash, signature and chain link on this device. Rebuild re-derives the search index from the ledger; the ledger itself is never changed.',
     audit: 'Audit ledger',
+    exportLedger: 'Export device ledger (JSON)',
+    exportHelp: 'The full chain, GENESIS first, for chain verification in verify.html (EXP-04).',
     rebuild: 'Rebuild index',
     auditOk: (n: number, at: string) => `All ${n} records verified at ${at}.`,
     auditFailed: (seq: number, reason: string) => `Chain check FAILED at seq ${seq} (${reason}). Nothing is auto-repaired.`,
@@ -372,6 +374,24 @@ export const en = {
       BROKEN_LINK: 'link to previous record broken',
       MALFORMED_ENVELOPE: 'malformed record',
     } as Record<string, string>,
+  },
+  pdf: {
+    title: 'Field test report',
+    subtitle: (id: string, seq: number) => `Record ${id} · device ledger seq ${seq}`,
+    details: 'Test details',
+    kitId: 'Kit ID / batch / expiry',
+    integrity: 'Evidence integrity',
+    prevHash: 'Previous record hash',
+    keyId: 'Signing key',
+    imageNote: 'Reduced rendition for reading. The photo SHA-256 above refers to the original camera file, not this PDF image.',
+    noImage: 'No accepted photograph in this record.',
+    qrCaption: 'Verification code: record ID, hash, key and signature',
+    howToVerify:
+      'To verify: open verify.html (works offline) and load the record JSON and the original photo, or paste the text of the QR code. Any change to the record or photo makes verification fail. This is a presumptive field result, not a laboratory confirmation.',
+    footer: (at: string) => `Generated ${at} by Praman Setu (prototype). SIMULATED — NOT A DRUG TEST.`,
+    make: 'PDF report',
+    making: 'Preparing PDF…',
+    shareTitle: 'Share PDF report',
   },
   outcome: {
     PRELIMINARY_POSITIVE: {

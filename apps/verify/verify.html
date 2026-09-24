@@ -66,7 +66,7 @@
       .field:last-child { margin-bottom: 0; }
       label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 14px; }
       .hint { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
-      input[type="file"], input[type="url"] {
+      input[type="file"], input[type="url"], textarea {
         width: 100%;
         padding: 9px 10px;
         border: 1px solid var(--line);
@@ -170,6 +170,24 @@
 
       <div class="panel">
         <button type="button" id="verify" disabled>Verify evidence</button>
+      </div>
+
+      <div class="panel">
+        <h2>…or verify from the PDF's QR code</h2>
+        <div class="field">
+          <label for="qrText">Verification code</label>
+          <textarea id="qrText" rows="3" placeholder="FDTC1|record id|record hash|key id|signature"></textarea>
+          <p class="hint">
+            Scan the QR on the PDF report with any QR app and paste the text. This proves the device signed that
+            record hash. Matching the hash to the printed fields still needs the record file. Load the registry in
+            section 2 (or the ledger export in section 1) to supply the device key.
+          </p>
+        </div>
+        <button type="button" class="secondary" id="verifyQr">Verify code</button>
+        <div id="qrResult" class="verdict hidden">
+          <h2 id="qrTitle"></h2>
+          <p id="qrText2"></p>
+        </div>
       </div>
 
       <div id="results" class="hidden">

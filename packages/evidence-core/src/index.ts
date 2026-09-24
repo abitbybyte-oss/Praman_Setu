@@ -9,3 +9,4 @@ export * from "./genesis";
 export * from "./verify";
 export * from "./test-record";
 export * from "./void-record";
+export * from "./qr";

@@ -26,6 +26,10 @@ import {
 
 import { blurCheck, calibrateCard, defaultRoiRadius, measureSample, snapCorner } from '../src/services/measure';
 import { buildTestRecord } from '../src/services/recordBuilder';
+import { reportHtml } from '../src/services/reportHtml';
+import { en } from '../src/i18n/en';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { cardReference, DEFAULT_CARD, kit, loadRefdb } from '../src/services/refdb';
 import { checkKitQr, formatKitQr } from '../src/services/kitqr';
 import type { Draft } from '../src/workflow/draft';
@@ -246,6 +250,15 @@ fullRun('scanned kit + timer, captured at 420 s (late)', 'SIM-A', [47, 41, -23],
   d.captures.push({ n: 1, uri: 'x', sha256: H64('c'), bytes: 2300000, taken_at: new Date().toISOString(), accepted: false, reject_reasons: ['IMAGE_BLURRY'], laplacian_variance: 12.3, elapsed_s: null });
   d.endedEarly = { kind: 'HARD_GATE', reasons: ['IMAGE_BLURRY'] };
   save('blurry, ended on hard gate', d, 'INCONCLUSIVE');
+}
+
+// EXP-02: render the PDF template for the first saved TEST record (preview in a browser).
+{
+  const env = chain[1] as Envelope<import('@fdtc/evidence-core').TestRecord>;
+  const out = join(__dirname, '../../../tools/demo/report/dist');
+  mkdirSync(out, { recursive: true });
+  writeFileSync(join(out, 'sample-report.html'), reportHtml({ envelope: env, imageBase64: null, void: null, S: en, generatedAt: new Date().toISOString() }));
+  console.log(`report preview: ${join(out, 'sample-report.html')}`);
 }
 
 const report = verifyBundle({ bundle: buildLedgerExport(chain, identity.deviceId) });

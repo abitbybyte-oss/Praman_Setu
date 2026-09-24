@@ -10,6 +10,7 @@ import { label, pct, S, when } from '@/src/i18n';
 import { writeJsonFile } from '@/src/services/evidence';
 import { envelopeById, evidencePath, exportLedger, voidFor } from '@/src/services/ledger';
 import { raisedFlags } from '@/src/services/context';
+import { makeReportPdf } from '@/src/services/report';
 import { voidTest } from '@/src/services/void';
 import { useSession } from '@/src/workflow/store';
 import { Button, C, Field, Note, Panel, Row, Screen } from '@/src/ui/kit';
@@ -62,6 +63,19 @@ export default function RecordScreen() {
     }
   };
 
+  const sharePdf = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      const uri = await makeReportPdf(envelope as never);
+      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: S.pdf.shareTitle, UTI: 'com.adobe.pdf' });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const sharePhoto = async () => {
     if (!photo) return;
     try {
@@ -95,10 +109,13 @@ export default function RecordScreen() {
     <Screen
       title={S.record.title(r.seq)}
       footer={
-        <Row>
-          <Button label={S.record.shareJson} onPress={shareJson} />
-          <Button label={S.record.sharePhoto} kind="secondary" onPress={sharePhoto} disabled={!photo} />
-        </Row>
+        <>
+          <Button label={busy ? S.pdf.making : S.pdf.make} onPress={sharePdf} busy={busy} />
+          <Row>
+            <Button label={S.record.shareJson} kind="secondary" onPress={shareJson} />
+            <Button label={S.record.sharePhoto} kind="secondary" onPress={sharePhoto} disabled={!photo} />
+          </Row>
+        </>
       }>
       {v ? (
         <Panel tone="bad" title={S.record.voidedTitle}>
