@@ -12,7 +12,8 @@
     "build:verify": "npm run build --workspace @fdtc/verify",
     "server": "npm run start --workspace @fdtc/mock-server",
     "card": "tsx tools/demo/card/generate-card.mts",
-    "kits": "tsx tools/demo/kits/generate-kit-qrs.mts"
+    "kits": "tsx tools/demo/kits/generate-kit-qrs.mts",
+    "study": "tsx tools/validation-study/run.mts"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

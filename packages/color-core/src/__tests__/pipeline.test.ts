@@ -154,6 +154,18 @@ describe("ROI measurement", () => {
     expect(mixed.spread_de00_p90).toBeGreaterThan(THRESH.roi_spread_p90_max);
   });
 
+  it("sensor noise in dim light is not mistaken for multiple colours", () => {
+    const dim = [0.45, 0.02, 0.01, 0.003, 0.01, 0.43, 0.02, 0.003, 0.01, 0.02, 0.38, 0.003];
+    const { roi } = run({ cast: dim, noise: 8, sample: [88, -1, 6], seed: 21 });
+    expect(roi.spread_de00_p90).toBeLessThan(THRESH.roi_spread_p90_max);
+  });
+
+  it("a small ROI still reports a spread (per-pixel fallback)", () => {
+    const img = renderScene({ noise: 3, sample: [48, 40, -22] });
+    const roi = measureRoi(img, { x: ROI.x, y: ROI.y, r: 5 }, IDENTITY_AFFINE);
+    expect(Number.isFinite(roi.spread_de00_p90)).toBe(true);
+  });
+
   it("counts area in pixels", () => {
     const { roi } = run({ sample: [48, 40, -22] });
     expect(roi.area_px).toBeGreaterThan(Math.PI * 39 * 39);
