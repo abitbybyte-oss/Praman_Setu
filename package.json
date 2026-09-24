@@ -10,7 +10,8 @@
     "fixtures": "tsx tools/fixtures/scripts/generate-crypto-vectors.ts",
     "build:refdb": "npm run build --workspace @fdtc/refdb",
     "build:verify": "npm run build --workspace @fdtc/verify",
-    "server": "npm run start --workspace @fdtc/mock-server"
+    "server": "npm run start --workspace @fdtc/mock-server",
+    "card": "tsx tools/demo/card/generate-card.mts"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

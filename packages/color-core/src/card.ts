@@ -10,6 +10,8 @@ export type PatchId = (typeof PATCH_ORDER)[number];
 
 export interface CardReference {
   patches: { id: PatchId; lab: Lab }[];
+  /** Printed-card geometry; see geometry.ts. */
+  layout?: import("./geometry").CardLayout;
   checks: {
     residual_mean_max: number;
     residual_max_max: number;

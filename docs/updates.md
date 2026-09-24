@@ -55,7 +55,7 @@ Golden rule from the PRD (§12): **when time runs short, cut P2 first, then P1 w
 - [ ] CAP-03 Blur hard gate (Laplacian variance) → "Image too blurry, retake"
 
 ### Calibration (6-patch tap)
-- [ ] CAL-01 Tap sequence WHITE → BLACK → RED → GREEN → BLUE → GRAY, with undo/retake
+- [ ] CAL-01 Printed card FDTC-CARD-1 (`npm run card`): tap 4 corner markers TL → TR → BR → BL, patches located by homography, with undo/retake
 - [ ] CAL-02 Sample each patch as median of a k×k window; reject off-centre taps
 - [ ] CAL-03 Fit **affine 3×4** colour-correction matrix; compute residual CIEDE2000
 - [ ] CAL-04 Card validation checks (hue, white/black clipping, neutral ramp, residual, card recognised) → CARD VALID / CARD INVALID with failed checks listed

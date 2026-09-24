@@ -156,7 +156,7 @@ flowchart LR
   B --> C["SHA-256 of file bytes"]
   B --> D["Working copy<br/>orientation fixed · 1600 px<br/>RGBA buffer"]
   D --> E["Quality metrics<br/>blur · clipping · glare"]
-  E --> F["6 patch taps<br/>median sampling"]
+  E --> F["4 corner taps<br/>homography · median sampling"]
   F --> G["Fit affine colour matrix<br/>linear sRGB"]
   G --> H["Card validation<br/>hue · ramp · residual"]
   H --> I["ROI tap + radius<br/>corrected median to Lab"]
@@ -170,7 +170,8 @@ Working copy	Skia decodes JPEG, applies EXIF orientation, downscales long side t
 Blur	Grayscale, 3×3 Laplacian, variance over card and kit regions.	quality.components.sharpness
 Clipping	Fraction of card/ROI pixels with any channel ≥ 254 or ≤ 1.	quality.components.clipping
 Glare	In ROI: raw pixels with all channels ≥ 245 and high local contrast. Pale-sample exemption: if corrected ROI median has L* ≥ 85, chroma < 10 and clipped fraction < 0.5%, treat as clear sample, not glare.	measurement.glare_fraction
-Patch sampling	Median over a k×k window (k ≈ 2% of card width, default 15 px on the working copy). Reject the tap if per-channel MAD exceeds a threshold ("tap nearer the centre of the patch").	calibration.patches[id] = {xy, rgb, mad} (xy in original pixel space)
+Card location	The officer taps the 4 corner markers of the printed card (layout in refdb.cards[v].layout, mm). A homography maps card mm → image px and locates each patch; taps are rejected if crossed, anticlockwise, too small or badly proportioned.	calibration.corners
+Patch sampling	Median over a k×k window centred on each located patch (k = sample_fraction × projected patch side, odd). Reject the tap if per-channel MAD exceeds a threshold ("tap nearer the centre of the patch").	calibration.patches[id] = {xy, rgb, mad} (xy in original pixel space)
 Linearise	sRGB inverse companding (piecewise, γ≈2.4).	—
 Colour correction	Least-squares 3×4 affine matrix M mapping measured linear RGB [r g b 1] to reference linear RGB for each patch, with a small ridge term. Card v1 has 6 patches (18 equations, 12 unknowns). Card v2 adds reagent-hue patches (§12).	calibration.matrix (12 numbers), model: "affine3x4"
 Residual	Apply M to each patch, convert to Lab, CIEDE2000 against the card reference.	residual_de00_mean, residual_de00_max

@@ -11,6 +11,26 @@
         { "id": "blue", "lab": [34.0, 14.0, -48.0] },
         { "id": "gray", "lab": [55.0, 0.0, 0.5] }
       ],
+      "layout": {
+        "width_mm": 110,
+        "height_mm": 64,
+        "markers_mm": {
+          "top_left": [6, 6],
+          "top_right": [104, 6],
+          "bottom_right": [104, 58],
+          "bottom_left": [6, 58]
+        },
+        "marker_diameter_mm": 7,
+        "patches_mm": {
+          "white": { "x": 12, "y": 10, "size": 18 },
+          "black": { "x": 34, "y": 10, "size": 18 },
+          "red": { "x": 56, "y": 10, "size": 18 },
+          "green": { "x": 12, "y": 32, "size": 18 },
+          "blue": { "x": 34, "y": 32, "size": 18 },
+          "gray": { "x": 56, "y": 32, "size": 18 }
+        },
+        "sample_fraction": 0.5
+      },
       "checks": {
         "residual_mean_max": 3.0,
         "residual_max_max": 6.0,

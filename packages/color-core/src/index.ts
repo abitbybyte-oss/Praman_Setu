@@ -12,5 +12,6 @@ export * from "./ccm";
 export * from "./sampling";
 export * from "./metrics";
 export * from "./card";
+export * from "./geometry";
 export * from "./quality";
 export * from "./classify";

@@ -131,7 +131,7 @@ CAP-07	P1	Request exposure / white-balance lock where the device supports it	Bes
 CAP-08	P2	Burst of 3–5 frames averaged into the working copy	Every frame's original is hashed
 7.6 Reference patches and card validation — CAL (Screen 5)
 ID	Pri	Requirement	Acceptance criteria
-CAL-01	P0	Prompted tap sequence: WHITE → BLACK → RED → GREEN → BLUE → GRAY, with a dot on each tap	Undo last tap. Retake always available.
+CAL-01	P0	Printed card FDTC-CARD-1 (fixed layout in the Reference DB). Prompted tap on the 4 corner markers: TOP-LEFT → TOP-RIGHT → BOTTOM-RIGHT → BOTTOM-LEFT; patches are located by homography and outlined on screen	Undo last tap. Retake always available. Crossed, anticlockwise or tiny quadrilaterals prompt a retap.
 CAL-02	P0	Sample each patch as the median of a k×k window	A non-uniform window prompts "Tap nearer the centre of the patch"
 CAL-03	P0	Fit an affine 3×4 colour-correction matrix and compute the residual CIEDE2000	Matrix, mean and max residual stored
 CAL-04	P0	Run the card validation checks (ARCHITECTURE §6.2)	CARD VALID, or CARD INVALID — DO NOT CONTINUE with each failed check listed

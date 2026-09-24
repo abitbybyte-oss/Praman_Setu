@@ -17,8 +17,21 @@ export interface CardPatch {
   lab: [number, number, number];
 }
 
+export type Point = [number, number];
+
+/** Physical layout of the printed card, in millimetres (tools/demo/card). */
+export interface CardLayout {
+  width_mm: number;
+  height_mm: number;
+  markers_mm: { top_left: Point; top_right: Point; bottom_right: Point; bottom_left: Point };
+  marker_diameter_mm: number;
+  patches_mm: Record<CardPatch["id"], { x: number; y: number; size: number }>;
+  sample_fraction: number;
+}
+
 export interface CardProfile {
   patches: CardPatch[];
+  layout: CardLayout;
   checks: {
     residual_mean_max: number;
     residual_max_max: number;
