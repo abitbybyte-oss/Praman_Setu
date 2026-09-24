@@ -59,3 +59,14 @@ export async function getDeviceIdentity(): Promise<DeviceIdentity> {
 export async function sign(payload: Uint8Array, keyId: string): Promise<Es256Signature> {
   return signPayload(payload, await loadPrivateKey(), keyId);
 }
+
+/** Load the key ahead of a ledger append, so the append itself can run as one
+ * synchronous SQLite transaction with no awaits inside it. */
+export async function prepareSigner(): Promise<DeviceIdentity> {
+  return getDeviceIdentity();
+}
+
+export function signSync(payload: Uint8Array, keyId: string): Es256Signature {
+  if (!cachedPrivateKey) throw new Error('device key not loaded; call prepareSigner() first');
+  return signPayload(payload, cachedPrivateKey, keyId);
+}

@@ -9,14 +9,17 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest --passWithNoTests",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "check:pipeline": "tsx scripts/pipeline-check.ts"
   },
   "jest": {
     "preset": "jest-expo"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
+    "@fdtc/color-core": "*",
     "@fdtc/evidence-core": "*",
+    "@fdtc/refdb": "*",
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.4.0",
     "@react-native-community/netinfo": "12.0.1",

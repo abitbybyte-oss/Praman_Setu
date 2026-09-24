@@ -1,0 +1,9 @@
+{
+  "key_id": "agency_refdb_2026",
+  "jwk": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "b5k2PXOYj_PGdzE9Dr5vpDJK5HrBWZo29inrsxqVlz4",
+    "y": "y5wl5K7t6ij3lSM-m1rGXWKf5_IdMSDZwAd0LiXN3XM"
+  }
+}

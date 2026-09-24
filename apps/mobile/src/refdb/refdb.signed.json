@@ -1,0 +1,335 @@
+{
+  "refdb_version": "2026.09-demo-1",
+  "simulated": true,
+  "cards": {
+    "FDTC-CARD-1": {
+      "patches": [
+        {
+          "id": "white",
+          "lab": [
+            95,
+            -0.5,
+            2
+          ]
+        },
+        {
+          "id": "black",
+          "lab": [
+            18,
+            0.3,
+            -0.8
+          ]
+        },
+        {
+          "id": "red",
+          "lab": [
+            44,
+            60,
+            38
+          ]
+        },
+        {
+          "id": "green",
+          "lab": [
+            55,
+            -45,
+            30
+          ]
+        },
+        {
+          "id": "blue",
+          "lab": [
+            34,
+            14,
+            -48
+          ]
+        },
+        {
+          "id": "gray",
+          "lab": [
+            55,
+            0,
+            0.5
+          ]
+        }
+      ],
+      "layout": {
+        "width_mm": 110,
+        "height_mm": 64,
+        "markers_mm": {
+          "top_left": [
+            6,
+            6
+          ],
+          "top_right": [
+            104,
+            6
+          ],
+          "bottom_right": [
+            104,
+            58
+          ],
+          "bottom_left": [
+            6,
+            58
+          ]
+        },
+        "marker_diameter_mm": 7,
+        "patches_mm": {
+          "white": {
+            "x": 12,
+            "y": 10,
+            "size": 18
+          },
+          "black": {
+            "x": 34,
+            "y": 10,
+            "size": 18
+          },
+          "red": {
+            "x": 56,
+            "y": 10,
+            "size": 18
+          },
+          "green": {
+            "x": 12,
+            "y": 32,
+            "size": 18
+          },
+          "blue": {
+            "x": 34,
+            "y": 32,
+            "size": 18
+          },
+          "gray": {
+            "x": 56,
+            "y": 32,
+            "size": 18
+          }
+        },
+        "sample_fraction": 0.5
+      },
+      "checks": {
+        "residual_mean_max": 3,
+        "residual_max_max": 6,
+        "neutral_ab_max": 8,
+        "clip_frac_max": 0.02
+      }
+    }
+  },
+  "kits": {
+    "SIM-A": {
+      "display_name": "Simulated Test A",
+      "protocol": {
+        "required_s": 120,
+        "max_s": 300,
+        "demo_required_s": 20,
+        "steps": [
+          "Place sample",
+          "Close pouch",
+          "Break ampoule 1",
+          "Agitate 10 s"
+        ]
+      },
+      "classes": [
+        {
+          "id": "SIM-A-POS",
+          "outcome": "PRELIMINARY_POSITIVE",
+          "label": "Simulated colour A",
+          "exemplars_lab": [
+            [
+              48,
+              40,
+              -22
+            ],
+            [
+              45.5,
+              43,
+              -25
+            ]
+          ],
+          "radius_de00": 15
+        },
+        {
+          "id": "SIM-A-NEG",
+          "outcome": "PRELIMINARY_NEGATIVE",
+          "label": "Simulated clear",
+          "exemplars_lab": [
+            [
+              88,
+              -1,
+              6
+            ]
+          ],
+          "radius_de00": 12
+        }
+      ]
+    },
+    "SIM-B": {
+      "display_name": "Simulated Test B",
+      "protocol": {
+        "required_s": 90,
+        "max_s": 240,
+        "demo_required_s": 20,
+        "steps": [
+          "Place sample",
+          "Close pouch",
+          "Break ampoule 1",
+          "Agitate 5 s"
+        ]
+      },
+      "classes": [
+        {
+          "id": "SIM-B-POS",
+          "outcome": "PRELIMINARY_POSITIVE",
+          "label": "Simulated colour B",
+          "exemplars_lab": [
+            [
+              60,
+              35,
+              55
+            ],
+            [
+              57.5,
+              38,
+              51
+            ]
+          ],
+          "radius_de00": 14
+        },
+        {
+          "id": "SIM-B-NEG",
+          "outcome": "PRELIMINARY_NEGATIVE",
+          "label": "Simulated pale straw",
+          "exemplars_lab": [
+            [
+              90,
+              -3,
+              12
+            ]
+          ],
+          "radius_de00": 12
+        }
+      ]
+    },
+    "SIM-C": {
+      "display_name": "Simulated Test C",
+      "protocol": {
+        "required_s": 150,
+        "max_s": 360,
+        "demo_required_s": 20,
+        "steps": [
+          "Place sample",
+          "Close pouch",
+          "Break ampoule 1",
+          "Break ampoule 2",
+          "Agitate 10 s"
+        ]
+      },
+      "classes": [
+        {
+          "id": "SIM-C-POS",
+          "outcome": "PRELIMINARY_POSITIVE",
+          "label": "Simulated colour C",
+          "exemplars_lab": [
+            [
+              35,
+              10,
+              -45
+            ],
+            [
+              33,
+              13,
+              -48.5
+            ]
+          ],
+          "radius_de00": 15
+        },
+        {
+          "id": "SIM-C-NEG",
+          "outcome": "PRELIMINARY_NEGATIVE",
+          "label": "Simulated clear",
+          "exemplars_lab": [
+            [
+              89,
+              -1,
+              4
+            ]
+          ],
+          "radius_de00": 12
+        }
+      ]
+    },
+    "SIM-D": {
+      "display_name": "Simulated Test D",
+      "protocol": {
+        "required_s": 60,
+        "max_s": 180,
+        "demo_required_s": 20,
+        "steps": [
+          "Place sample",
+          "Close pouch",
+          "Break ampoule 1",
+          "Agitate 15 s"
+        ]
+      },
+      "classes": [
+        {
+          "id": "SIM-D-POS",
+          "outcome": "PRELIMINARY_POSITIVE",
+          "label": "Simulated colour D",
+          "exemplars_lab": [
+            [
+              30,
+              18,
+              22
+            ],
+            [
+              28,
+              21,
+              25
+            ]
+          ],
+          "radius_de00": 13
+        },
+        {
+          "id": "SIM-D-NEG",
+          "outcome": "PRELIMINARY_NEGATIVE",
+          "label": "Simulated clear",
+          "exemplars_lab": [
+            [
+              88,
+              0,
+              5
+            ]
+          ],
+          "radius_de00": 12
+        }
+      ]
+    }
+  },
+  "thresholds": {
+    "blur_lapvar_hard": 60,
+    "blur_lapvar_good": 150,
+    "glare_hard": 0.03,
+    "glare_soft": 0.005,
+    "roi_min_radius_frac": 0.01,
+    "roi_spread_p90_max": 8,
+    "conf_min": 0.25,
+    "no_reaction_de00": 3
+  },
+  "quality_weights": {
+    "sharpness": 0.25,
+    "clipping": 0.15,
+    "glare": 0.2,
+    "residual": 0.15,
+    "uniformity": 0.1,
+    "area": 0.05,
+    "card": 0.1
+  },
+  "signature": {
+    "alg": "ES256",
+    "key_id": "agency_refdb_2026",
+    "value": "LTTRtG4uOxQ_qgP29ERaZ4OtdssJBgv6kHF7s6yE9opI0wWNXvYcBN7FAY4VDnYqUPkG8mrM2wUW3b4KW62NvQ"
+  }
+}

@@ -25,6 +25,8 @@ const packageRoot = resolve(here, "..");
 const sourcePath = resolve(packageRoot, "src/refdb.source.json");
 const keyPath = resolve(packageRoot, "keys/agency-refdb.private.json");
 const distDir = resolve(packageRoot, "dist");
+// The mobile app bundles the signed DB and the agency public key (never the private key).
+const appDir = resolve(packageRoot, "../../apps/mobile/src/refdb");
 
 function loadOrCreateSigningKey(): Uint8Array {
   if (existsSync(keyPath)) {
@@ -61,8 +63,16 @@ writeFileSync(
   JSON.stringify({ key_id: KEY_ID, jwk: publicKeyToJwk(publicKey) }, null, 2) + "\n"
 );
 
+mkdirSync(appDir, { recursive: true });
+writeFileSync(resolve(appDir, "refdb.signed.json"), JSON.stringify(signed, null, 2) + "\n");
+writeFileSync(
+  resolve(appDir, "agency-refdb.pub.json"),
+  JSON.stringify({ key_id: KEY_ID, jwk: publicKeyToJwk(publicKey) }, null, 2) + "\n"
+);
+
 console.log(`Reference DB  ${body.refdb_version}`);
 console.log(`  kits        ${Object.keys(body.kits).join(", ")}`);
 console.log(`  sha256      ${sha256Hex(payload)}`);
 console.log(`  signed by   ${KEY_ID}`);
 console.log(`  written to  ${distDir}`);
+console.log(`  bundled in  ${appDir}`);

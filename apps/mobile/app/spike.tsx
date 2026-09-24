@@ -19,7 +19,6 @@ import {
   chainLength,
   currentExport,
   ensureGenesis,
-  resetChain,
 } from '@/src/services/chain';
 import { storeCapture, writeJsonFile } from '@/src/services/evidence';
 import { SimulatedBanner } from '@/src/ui/SimulatedBanner';
@@ -74,8 +73,8 @@ export default function SpikeScreen() {
       const envelope = await appendSpikeRecord({
         capture: stored,
         recordId,
-        width: photo.width ?? 0,
-        height: photo.height ?? 0,
+        width: 0,
+        height: 0,
       });
 
       setResult({
@@ -206,14 +205,6 @@ export default function SpikeScreen() {
           </Pressable>
           {registration ? <Text style={styles.help}>{registration}</Text> : null}
         </Section>
-
-        <Pressable
-          onPress={() => {
-            resetChain();
-            setResult(null);
-          }}>
-          <Text style={styles.reset}>Reset chain (keeps the device key)</Text>
-        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
