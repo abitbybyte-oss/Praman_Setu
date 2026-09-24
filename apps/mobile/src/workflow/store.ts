@@ -27,7 +27,7 @@ interface State {
   lastCase: { caseId: string | null; witness: string | null };
   login(op: Operator): void;
   logout(): void;
-  startTest(kitType: string, caseId: string | null, witness: string | null, kitScan: KitScan | null): void;
+  startTest(kitType: string, caseId: string | null, witness: string | null, kitScan: KitScan | null, study?: { truthClass: string; lighting: string } | null): void;
   /** TMR-02: record START TIMER once; it cannot be restarted for the same test. */
   setTimer(t: ReactionTimer): void;
   addCapture(c: Omit<CaptureEntry, 'n'>): CaptureEntry;
@@ -52,7 +52,7 @@ export const useSession = create<State>((set, get) => ({
   login: (operator) => set({ operator }),
   logout: () => set({ operator: null, draft: null }),
 
-  startTest: (kitType, caseId, witness, kitScan) => {
+  startTest: (kitType, caseId, witness, kitScan, study = null) => {
     const operator = get().operator;
     if (!operator) throw new Error('sign in first');
     set({
@@ -63,6 +63,7 @@ export const useSession = create<State>((set, get) => ({
         operator,
         kitType,
         kitScan,
+        study,
         timer: null,
         caseId,
         witness,

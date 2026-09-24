@@ -1,7 +1,7 @@
 /** Ledger schema DDL (ARCHITECTURE §8.1). Pure text, shared by the app and
  * the Node tamper check (TC-33). */
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const MIGRATION_1 = `
 CREATE TABLE ledger (
@@ -85,5 +85,14 @@ CREATE TABLE IF NOT EXISTS test_draft (
   badge_id   TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   draft      TEXT NOT NULL
+);
+`;
+
+/** v3: validation-study rows. Not evidence: never signed, may be cleared. */
+export const MIGRATION_3 = `
+CREATE TABLE IF NOT EXISTS study_capture (
+  study_id    TEXT PRIMARY KEY,
+  captured_at TEXT NOT NULL,
+  row         TEXT NOT NULL
 );
 `;

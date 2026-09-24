@@ -7,6 +7,7 @@ import { label, pct, S, when } from '@/src/i18n';
 import { collectContext, raisedFlags, type CaptureContext } from '@/src/services/context';
 import { kit, loadRefdb } from '@/src/services/refdb';
 import { preview, saveTest } from '@/src/services/testRecord';
+import { recordStudyRow, studyCellCount } from '@/src/services/studyStore';
 import { Button, C, Chip, Chips, Field, Note, Panel, Row, Screen } from '@/src/ui/kit';
 import { captureTiming } from '@/src/services/recordBuilder';
 import { guards, useSession } from '@/src/workflow/store';
@@ -22,6 +23,8 @@ export default function ResultScreen() {
   const operator = useSession((st) => st.operator);
   const rejectCurrent = useSession((st) => st.rejectCurrent);
   const clearDraft = useSession((st) => st.clearDraft);
+  const startTest = useSession((st) => st.startTest);
+  const [studyNote, setStudyNote] = useState<string | null>(null);
   const [ctx, setCtx] = useState<CaptureContext | null>(null);
   const [saved, setSaved] = useState<Envelope<TestRecord> | null>(null);
   const [busy, setBusy] = useState(false);
@@ -93,15 +96,43 @@ export default function ResultScreen() {
     router.dismissTo('/test/capture');
   };
 
+  const recordStudy = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const row = await recordStudyRow(draft);
+      const n = studyCellCount(draft.kitType, row.true_class, row.lighting);
+      // Same swatch and light again: straight back to the camera.
+      startTest(draft.kitType, draft.caseId, draft.witness, draft.kitScan, draft.study);
+      setStudyNote(S.study.recorded(n));
+      router.dismissTo('/test/capture');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Screen
       title={S.result.title}
       footer={
         <Row>
           {!draft.endedEarly ? <Button label={S.result.retake} kind="secondary" onPress={retake} disabled={busy} /> : null}
-          <Button label={S.result.save} onPress={save} busy={busy || !ctx} />
+          {draft.study ? (
+            <Button label={S.study.record} onPress={recordStudy} busy={busy} />
+          ) : (
+            <Button label={S.result.save} onPress={save} busy={busy || !ctx} />
+          )}
         </Row>
       }>
+      {draft.study ? (
+        <Panel tone="warn" title={S.study.banner}>
+          <Note>{S.study.cell(studyCellCount(draft.kitType, draft.study.truthClass, draft.study.lighting))}</Note>
+          {studyNote ? <Note>{studyNote}</Note> : null}
+        </Panel>
+      ) : null}
+
       <Panel tone={TONE[cls.outcome]}>
         <Text style={{ color: C.text, fontSize: 21, fontWeight: '800' }}>{wording.title}</Text>
         {cls.outcome !== 'INCONCLUSIVE' ? <Text style={{ color: C.text, fontSize: 16 }}>{S.result.confidence(pct(cls.confidence))}</Text> : null}

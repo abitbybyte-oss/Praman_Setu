@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput } from 'react-native';
 
 import { label, S } from '@/src/i18n';
-import { kits, loadRefdb } from '@/src/services/refdb';
+import { kit as kitProfile, kits, loadRefdb } from '@/src/services/refdb';
+import { LIGHTING } from '@/src/services/studyCsv';
+import { studyMode } from '@/src/services/studyStore';
 import { Button, C, Field, Note, Panel, Screen } from '@/src/ui/kit';
 import { useSession } from '@/src/workflow/store';
 
@@ -18,22 +20,26 @@ export default function KitScreen() {
   const [manualType, setManualType] = useState<string | null>(null);
   const [caseId, setCaseId] = useState(lastCase.caseId ?? '');
   const [witness, setWitness] = useState(lastCase.witness ?? '');
+  const study = studyMode();
+  const [truth, setTruth] = useState<string | null>(null);
+  const [lighting, setLighting] = useState<string | null>(null);
 
   const scannedValid = scan?.status === 'VALID' && scan.kit ? scan.kit.kit_type : null;
   const kitType = scan ? scannedValid : manualType;
   const blocked = !!scan && scan.status !== 'VALID';
 
+  const studyReady = !study || (!!truth && !!lighting && !!kitType && kitProfile(kitType).classes.some((c) => c.id === truth));
   const start = () => {
-    if (!kitType || blocked) return;
-    startTest(kitType, caseId.trim() || null, witness.trim() || null, scan && scan.status === 'VALID' ? scan : null);
+    if (!kitType || blocked || !studyReady) return;
+    startTest(kitType, caseId.trim() || null, witness.trim() || null, scan && scan.status === 'VALID' ? scan : null, study ? { truthClass: truth!, lighting: lighting! } : null);
     setPendingKit(null);
-    router.push('/test/timer');
+    router.push(study ? '/test/capture' : '/test/timer');
   };
 
   const statusTone = !scan ? undefined : scan.status === 'VALID' ? 'good' : 'bad';
 
   return (
-    <Screen title={S.kit.title} footer={<Button label={S.kit.continue} onPress={start} disabled={!kitType || blocked} />}>
+    <Screen title={S.kit.title} footer={<Button label={S.kit.continue} onPress={start} disabled={!kitType || blocked || !studyReady} />}>
       <Button label={S.kit.scan} onPress={() => router.push('/test/scan')} />
 
       {scan ? (
@@ -67,6 +73,28 @@ export default function KitScreen() {
           ))}
         </Panel>
       )}
+
+      {study ? (
+        <Panel title={S.study.banner} tone="warn">
+          <Text style={styles.label}>{S.study.truth}</Text>
+          {kitType ? (
+            kitProfile(kitType).classes.map((c) => (
+              <Pressable key={c.id} onPress={() => setTruth(c.id)} style={[styles.kit, truth === c.id && styles.selected]}>
+                <Text style={styles.kitName}>{c.label}</Text>
+                <Text style={styles.kitMeta}>{c.id}</Text>
+              </Pressable>
+            ))
+          ) : (
+            <Note>{S.kit.orManual}</Note>
+          )}
+          <Text style={styles.label}>{S.study.lighting}</Text>
+          {LIGHTING.map((l) => (
+            <Pressable key={l} onPress={() => setLighting(l)} style={[styles.kit, lighting === l && styles.selected]}>
+              <Text style={styles.kitName}>{S.study.lightingNames[l]}</Text>
+            </Pressable>
+          ))}
+        </Panel>
+      ) : null}
 
       <Panel title={S.kit.case}>
         <Text style={styles.label}>{S.kit.caseId}</Text>

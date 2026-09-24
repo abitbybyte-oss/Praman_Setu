@@ -1,6 +1,6 @@
 import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
 
-import { MIGRATION_1, MIGRATION_2, SCHEMA_VERSION } from './schema';
+import { MIGRATION_1, MIGRATION_2, MIGRATION_3, SCHEMA_VERSION } from './schema';
 
 /** Local storage (ARCHITECTURE §8.1).
  *
@@ -17,7 +17,7 @@ export function getDb(): SQLiteDatabase {
   opened.execSync('PRAGMA journal_mode = WAL;');
   const row = opened.getFirstSync<{ user_version: number }>('PRAGMA user_version');
   const version = row?.user_version ?? 0;
-  const steps = [MIGRATION_1, MIGRATION_2];
+  const steps = [MIGRATION_1, MIGRATION_2, MIGRATION_3];
   if (version < SCHEMA_VERSION) {
     opened.withTransactionSync(() => {
       for (let v = version; v < SCHEMA_VERSION; v++) opened.execSync(steps[v]);

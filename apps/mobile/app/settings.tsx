@@ -3,6 +3,7 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { S, when } from '@/src/i18n';
 import { demoTiming, setDemoTiming } from '@/src/services/demo';
+import { clearStudy, exportStudyCsv, setStudyMode, studyMode, studyRows } from '@/src/services/studyStore';
 import * as Sharing from 'expo-sharing';
 
 import { writeJsonFile } from '@/src/services/evidence';
@@ -22,6 +23,8 @@ export default function SettingsScreen() {
   const [auditResult, setAuditResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [demo, setDemo] = useState(demoTiming());
+  const [study, setStudy] = useState(studyMode());
+  const [studyN, setStudyN] = useState(studyRows().length);
 
   const save = async () => {
     setBusy('save');
@@ -91,6 +94,38 @@ export default function SettingsScreen() {
             setDemo(!demo);
           }}
         />
+      </Panel>
+
+      <Panel title={S.settings.studyTitle} tone={study ? 'warn' : undefined}>
+        <Note>{S.settings.studyHelp}</Note>
+        <Button
+          label={study ? S.settings.studyOn : S.settings.studyOff}
+          kind="secondary"
+          onPress={() => {
+            setStudyMode(!study);
+            setStudy(!study);
+          }}
+        />
+        <Note>{S.settings.studyCount(studyN)}</Note>
+        <Row>
+          <Button
+            label={S.settings.studyExport}
+            kind="secondary"
+            disabled={studyN === 0}
+            onPress={async () => {
+              await Sharing.shareAsync(exportStudyCsv(), { mimeType: 'text/csv', dialogTitle: S.settings.studyExport });
+            }}
+          />
+          <Button
+            label={S.settings.studyClear}
+            kind="danger"
+            disabled={studyN === 0}
+            onPress={() => {
+              clearStudy();
+              setStudyN(0);
+            }}
+          />
+        </Row>
       </Panel>
 
       <Panel title={S.settings.registration} tone={tone}>

@@ -103,14 +103,15 @@ Golden rule from the PRD (§12): **when time runs short, cut P2 first, then P1 w
 
 ## 4. Phase 3 — Workflow (P1)
 
-- [ ] KIT-03/04/05 Kit QR scan (fills type/batch/mfg/expiry, locks kit type), status VALID/EXPIRED/NOT_YET_VALID/UNRECOGNISED, blocks anything but VALID
-- [ ] TMR-01–07 Reaction timer from kit protocol: capture locked until `required_s`, vibration + "CAPTURE WINDOW OPEN", capture after `max_s` forces Inconclusive, timer survives backgrounding
-- [ ] CAP-04/05 Glare hard gate on reaction area (with pale/clear-sample exemption) + capture quality score (0–100, GOOD/FAIR/POOR, top 3 reasons)
-- [ ] RES-07 Structured Inconclusive reasons (full list, §8.2) + one recommended action (Retake / Repeat / Preserve for lab, most-severe wins)
-- [ ] HIS-03 History filters: date range, officer, outcome, kit type, case number (≤300ms @ 5,000 records)
-- [ ] EXP-02/03 PDF report (SIMULATED watermark, hash, QR) + compact QR payload (`FDTC1|record_id|record_hash|key_id|signature`)
-- [ ] EXP-04 Export full device ledger for chain verification
-- [ ] Run the validation study (tools/validation-study): accuracy, lighting invariance, Cohen's κ vs human panel → feeds success metrics M1–M4
+- [x] KIT-03/04/05 Kit QR scan (fills type/batch/mfg/expiry, locks kit type), status VALID/EXPIRED/NOT_YET_VALID/UNRECOGNISED, blocks anything but VALID — QR decoded from a photo (jsQR, no rebuild); `npm run kits` prints demo labels
+- [x] TMR-01–07 Reaction timer from kit protocol: capture locked until `required_s`, vibration + "CAPTURE WINDOW OPEN", capture after `max_s` forces Inconclusive, timer survives backgrounding — demo timing setting (DEMO_PROTOCOL recorded)
+- [x] CAP-04/05 Glare hard gate on reaction area (with pale/clear-sample exemption) + capture quality score (0–100, GOOD/FAIR/POOR, top 3 reasons) — glare gate at ROI; '92 / 100 — Good' / 'Poor — Retake: …'
+- [x] RES-07 Structured Inconclusive reasons (full list, §8.2) + one recommended action (Retake / Repeat / Preserve for lab, most-severe wins) — done in Phase 1
+- [x] HIS-03 History filters: date range, officer, outcome, kit type, case number (≤300ms @ 5,000 records) — < 300 ms on 5,000 records (measured on the real schema)
+- [x] EXP-02/03 PDF report (SIMULATED watermark, hash, QR) + compact QR payload (`FDTC1|record_id|record_hash|key_id|signature`) — expo-print PDF; QR verifies in verify.html (VER-06, TC-39)
+- [x] EXP-04 Export full device ledger for chain verification — Settings → Export device ledger
+- [ ] Run the validation study (tools/validation-study) — tooling + app study mode done; synthetic dry run passes M1–M4; **phone run pending**. Dry run found & fixed a per-pixel spread false positive in dim light.
+  - Original item: Run the validation study (tools/validation-study): accuracy, lighting invariance, Cohen's κ vs human panel → feeds success metrics M1–M4
 - **Exit criteria:** M1–M4 measured and ready to show on a slide.
 
 ---

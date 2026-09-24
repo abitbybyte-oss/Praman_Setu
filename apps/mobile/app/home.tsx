@@ -32,9 +32,13 @@ export default function HomeScreen() {
       setCounts({ records: ledgerLength(), tests: listTests().length });
       // EVD-08: an interrupted test with captures must be resumed or ended; one
       // without captures holds no evidence and is dropped.
-      const found = loadDraft();
-      if (found && found.draft.captures.length === 0) deleteDraft();
-      setRecovered(found && found.draft.captures.length > 0 && !useSession.getState().draft ? found : null);
+      // A study draft is never evidence: discard it rather than offer an ABANDONED record.
+      let found = loadDraft();
+      if (found && (found.draft.captures.length === 0 || found.draft.study)) {
+        deleteDraft();
+        found = null;
+      }
+      setRecovered(found && !useSession.getState().draft ? found : null);
       ensureRegistered(operator.badge_id).then(setReg);
     }, [operator])
   );

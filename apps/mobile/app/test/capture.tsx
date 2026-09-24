@@ -121,7 +121,7 @@ export default function CaptureScreen() {
             label={busy ?? (win?.state === 'WAITING' ? S.capture.waiting(mmss(win.remaining_s)) : draft.captures.length ? S.capture.retake : S.capture.capture)}
             onPress={take}
             busy={!!busy}
-            disabled={!hasPermission || !timer || win?.state === 'WAITING'}
+            disabled={!hasPermission || (!timer && !draft.study) || win?.state === 'WAITING'}
           />
         </Row>
       }>
@@ -140,7 +140,9 @@ export default function CaptureScreen() {
         </View>
       </View>
 
-      {!timer ? (
+      {draft.study ? (
+        <Note tone="warn">{S.study.banner}</Note>
+      ) : !timer ? (
         <Button label={S.capture.noTimer} kind="secondary" onPress={() => router.replace('/test/timer')} />
       ) : win?.state === 'OPEN' ? (
         <Text style={styles.open}>{S.capture.open}</Text>

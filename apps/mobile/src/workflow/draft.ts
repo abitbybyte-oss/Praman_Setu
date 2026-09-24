@@ -30,6 +30,8 @@ export interface Draft {
   kitType: string;
   /** KIT-03: the scanned kit, or null for a manual selection. */
   kitScan: KitScan | null;
+  /** Validation-study capture (dev): the true swatch and lighting. Not evidence. */
+  study?: { truthClass: string; lighting: string } | null;
   /** TMR-02: set by START TIMER. */
   timer: ReactionTimer | null;
   caseId: string | null;
@@ -53,7 +55,7 @@ export function currentCapture(d: Draft | null): CaptureEntry | null {
 /** EVD-08: where to resume an interrupted test. */
 export function resumeRoute(d: Draft): '/test/timer' | '/test/capture' | '/test/card' | '/test/roi' | '/test/result' {
   if (d.endedEarly || d.sample) return '/test/result';
-  if (!d.timer) return '/test/timer';
+  if (!d.timer && !d.study) return '/test/timer';
   if (d.card && d.card.calibration.card_status === 'VALID') return '/test/roi';
   if (currentCapture(d)) return '/test/card';
   return '/test/capture';
