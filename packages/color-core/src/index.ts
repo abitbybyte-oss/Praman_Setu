@@ -2,10 +2,15 @@
  *
  * Pure TypeScript with no React Native dependencies: it takes an RGBA buffer and
  * knows nothing about cameras, so every rule is unit-testable in Node.
- *
- * Phase 1 fills this in: srgb, lab, ciede2000, ccm (affine 3x4 fit), sampling,
- * quality and classify. Deliberately empty until then — the Phase 0 exit
- * criteria only covers hashing and signing.
- */
+ * All thresholds are passed in from the signed Reference DB, never hard-coded
+ * as policy here. */
 
-export const COLOR_CORE_PLACEHOLDER = true;
+export * from "./color";
+export * from "./ciede2000";
+export * from "./image";
+export * from "./ccm";
+export * from "./sampling";
+export * from "./metrics";
+export * from "./card";
+export * from "./quality";
+export * from "./classify";

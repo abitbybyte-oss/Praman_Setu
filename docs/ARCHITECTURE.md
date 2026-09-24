@@ -520,7 +520,7 @@ A signed JSON bundle shipped with the app, verified at start-up. If the signatur
         { "id": "black", "lab": [18.0, 0.3, -0.8] },
         { "id": "red",   "lab": [44.0, 60.0, 38.0] },
         { "id": "green", "lab": [55.0, -45.0, 30.0] },
-        { "id": "blue",  "lab": [32.0, 15.0, -55.0] },
+        { "id": "blue",  "lab": [34.0, 14.0, -48.0] },
         { "id": "gray",  "lab": [55.0, 0.0, 0.5] }
       ],
       "checks": { "residual_mean_max": 3.0, "residual_max_max": 6.0, "neutral_ab_max": 8.0, "clip_frac_max": 0.02 }
