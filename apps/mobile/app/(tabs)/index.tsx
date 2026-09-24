@@ -23,6 +23,17 @@ export default function HomeScreen() {
           </Link>
         </View>
 
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Phase 0 — native smoke test</Text>
+          <Text style={styles.cardBody}>
+            Confirms SQLite (append-only ledger triggers) and Skia (JPEG decode, downscale, pixel
+            readback) work on this device.
+          </Text>
+          <Link href="/smoke" style={styles.link}>
+            Open smoke test
+          </Link>
+        </View>
+
         <Text style={styles.note}>
           The full test workflow — kit selection, guided capture, reference-card calibration and
           classification — arrives in Phase 1.

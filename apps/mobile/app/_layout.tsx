@@ -28,6 +28,7 @@ export default function RootLayout() {
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="spike" options={{ title: 'Evidence spike' }} />
+      <Stack.Screen name="smoke" options={{ title: 'Native smoke test' }} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );
