@@ -7,3 +7,4 @@ export * from "./envelope";
 export * from "./chain";
 export * from "./genesis";
 export * from "./verify";
+export * from "./test-record";
