@@ -46,6 +46,14 @@
         {
           "locationWhenInUsePermission": "The location where a simulated test was performed is recorded in the signed evidence record."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
       ]
     ],
     "extra": {
