@@ -47,7 +47,7 @@ describe("EVD-07 signed Reference DB", () => {
 
   it("the hash changes with any content change (records carry it)", () => {
     const db = copy();
-    db.refdb_version = "2026.09-demo-2";
+    db.refdb_version = `${bundled.refdb_version}-changed`;
     expect(referenceDbHash(db)).not.toBe(referenceDbHash(bundled));
   });
 });

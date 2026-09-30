@@ -1,3 +1,4 @@
+import * as ExpoCrypto from 'expo-crypto';
 import { Directory, File, Paths } from 'expo-file-system';
 import {
   canonicalizeRecord,
@@ -31,7 +32,9 @@ function evidenceDirectory(recordId: string): Directory {
 export async function storeCapture(sourcePath: string, recordId: string, n: number): Promise<StoredCapture> {
   const source = new File(sourcePath.startsWith('file://') ? sourcePath : `file://${sourcePath}`);
   const bytes = await source.bytes();
-  const digest = sha256Hex(bytes);
+  // Native SHA-256: the JS hash takes ~11 s on a 4 MB photo in a dev build.
+  const hash = new Uint8Array(await ExpoCrypto.digest(ExpoCrypto.CryptoDigestAlgorithm.SHA256, bytes));
+  const digest = Array.from(hash, (b) => b.toString(16).padStart(2, '0')).join('');
 
   const name = `capture-${String(n).padStart(2, '0')}-${digest.slice(0, 8)}.jpg`;
   const target = new File(evidenceDirectory(recordId), name);

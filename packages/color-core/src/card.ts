@@ -1,5 +1,5 @@
 import { labToLinear, linearToLab, luminance8, srgb8ToLinear, type Lab, type Vec3 } from "./color";
-import { applyAffine, DEFAULT_RIDGE, fitAffine, type AffineMatrix } from "./ccm";
+import { applyAffine, applyTone, DEFAULT_RIDGE, fitAffine, TONE_GAMMA_MAX, TONE_GAMMA_MIN, type AffineMatrix } from "./ccm";
 import { deltaE00 } from "./ciede2000";
 import type { PatchSample } from "./sampling";
 
@@ -9,7 +9,9 @@ export const PATCH_ORDER = ["white", "black", "red", "green", "blue", "gray"] as
 export type PatchId = (typeof PATCH_ORDER)[number];
 
 export interface CardReference {
-  patches: { id: PatchId; lab: Lab }[];
+  /** `lab`: the patch as printed (the fit target). `print_lab`: what the card
+   * generator asks the printer for, when it differs; not used here. */
+  patches: { id: PatchId; lab: Lab; print_lab?: Lab }[];
   /** Printed-card geometry; see geometry.ts. */
   layout?: import("./geometry").CardLayout;
   checks: {
@@ -45,7 +47,9 @@ export interface CardCheck {
 }
 
 export interface Calibration {
-  model: "affine3x4";
+  model: "tone-affine3x4";
+  /** Exponent applied to linear RGB before `matrix` (see ccm.ts). */
+  tone_gamma: number;
   matrix: AffineMatrix;
   residuals_de00: Record<string, number>;
   residual_de00_mean: number;
@@ -104,7 +108,8 @@ export function calibrate(
 
   if (!allMarked || !reference) {
     return {
-      model: "affine3x4",
+      model: "tone-affine3x4",
+      tone_gamma: 1,
       matrix: [],
       residuals_de00: {},
       residual_de00_mean: NaN,
@@ -152,20 +157,35 @@ export function calibrate(
   const measured = PATCH_ORDER.map((id) => srgb8ToLinear(s(id).rgb));
   const refLab = new Map(reference.patches.map((p) => [p.id, p.lab]));
   const target = PATCH_ORDER.map((id) => labToLinear(refLab.get(id)!));
-  const matrix = fitAffine(measured, target, opts.ridge ?? DEFAULT_RIDGE);
-
+  // Fit the tone exponent by grid search on the mean residual (81 small fits).
+  let best: { gamma: number; matrix: AffineMatrix; corrected: Lab[]; residuals: number[]; mean: number } | null = null;
+  for (let i = 0; i <= Math.round((TONE_GAMMA_MAX - TONE_GAMMA_MIN) * 100); i++) {
+    const gamma = Math.round((TONE_GAMMA_MIN + i / 100) * 100) / 100;
+    const toned = measured.map((v) => applyTone(v, gamma));
+    const m = fitAffine(toned, target, opts.ridge ?? DEFAULT_RIDGE);
+    const corr = toned.map((v) => linearToLab(applyAffine(m, v)));
+    const res = corr.map((lab, k) => deltaE00(lab, refLab.get(PATCH_ORDER[k])!));
+    const mn = res.reduce((a, b) => a + b, 0) / res.length;
+    if (!best || mn < best.mean - 1e-9) best = { gamma, matrix: m, corrected: corr, residuals: res, mean: mn };
+  }
+  const { gamma, matrix } = best!;
   const residuals: Record<string, number> = {};
   const corrected: Record<string, Lab> = {};
   PATCH_ORDER.forEach((id, k) => {
-    corrected[id] = linearToLab(applyAffine(matrix, measured[k]));
-    residuals[id] = deltaE00(corrected[id], refLab.get(id)!);
+    corrected[id] = best!.corrected[k];
+    residuals[id] = best!.residuals[k];
   });
-  const vals = Object.values(residuals);
-  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-  const max = Math.max(...vals);
+  const mean = best!.mean;
+  const max = Math.max(...best!.residuals);
 
-  const cast = Math.max(...(["white", "gray", "black"] as const).flatMap((id) => [Math.abs(corrected[id][1]), Math.abs(corrected[id][2])]));
-  add("NEUTRAL_CAST", cast < c.neutral_ab_max, 1 - cast / c.neutral_ab_max, `max |a*|,|b*| on neutrals ${cast.toFixed(2)}`);
+  // Cast relative to each neutral's own reference: a printed gray need not be perfectly neutral.
+  const cast = Math.max(
+    ...(["white", "gray", "black"] as const).flatMap((id) => [
+      Math.abs(corrected[id][1] - refLab.get(id)![1]),
+      Math.abs(corrected[id][2] - refLab.get(id)![2]),
+    ])
+  );
+  add("NEUTRAL_CAST", cast < c.neutral_ab_max, 1 - cast / c.neutral_ab_max, `max a*/b* error on neutrals ${cast.toFixed(2)}`);
   add("RESIDUAL_MEAN", mean <= c.residual_mean_max, 1 - mean / c.residual_mean_max, `mean ΔE00 ${mean.toFixed(2)} (max ${c.residual_mean_max})`);
   add("RESIDUAL_MAX", max <= c.residual_max_max, 1 - max / c.residual_max_max, `max ΔE00 ${max.toFixed(2)} (max ${c.residual_max_max})`);
 
@@ -173,7 +193,8 @@ export function calibrate(
   const confidence = checks.reduce((a, k) => a + (k.pass ? 0.5 + 0.5 * k.margin : 0), 0) / checks.length;
 
   return {
-    model: "affine3x4",
+    model: "tone-affine3x4",
+    tone_gamma: gamma,
     matrix,
     residuals_de00: residuals,
     residual_de00_mean: mean,

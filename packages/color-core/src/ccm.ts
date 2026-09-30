@@ -12,6 +12,18 @@ export type AffineMatrix = number[];
 export const IDENTITY_AFFINE: AffineMatrix = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0];
 export const DEFAULT_RIDGE = 1e-4;
 
+/** Tone step before the affine fit ("tone-affine3x4"): each linear channel is
+ * raised to `gamma` first. Phone cameras apply their own tone curve, which no
+ * affine map can undo; on a real phone photo of the printed card the black
+ * patch was off by ~16 ΔE00 with gamma 1 and ~2 with gamma ~0.6. The exponent
+ * is fitted per photo from the card and recorded. 1 = plain affine. */
+export const TONE_GAMMA_MIN = 0.4;
+export const TONE_GAMMA_MAX = 1.2;
+
+export function applyTone([r, g, b]: Vec3, gamma: number): Vec3 {
+  return gamma === 1 ? [r, g, b] : [Math.pow(Math.max(0, r), gamma), Math.pow(Math.max(0, g), gamma), Math.pow(Math.max(0, b), gamma)];
+}
+
 export function applyAffine(m: AffineMatrix, [r, g, b]: Vec3): Vec3 {
   return [
     m[0] * r + m[1] * g + m[2] * b + m[3],
@@ -69,12 +81,13 @@ export function fitAffine(measured: Vec3[], reference: Vec3[], ridge: number = D
  * sRGB→linear is a 256-entry table, linear→sRGB a 4096-entry table. */
 export function correctImage(
   img: { width: number; height: number; data: Uint8Array | Uint8ClampedArray },
-  m: AffineMatrix
+  m: AffineMatrix,
+  gamma = 1
 ): Uint8ClampedArray {
   const toLin = new Float32Array(256);
   for (let i = 0; i < 256; i++) {
     const c = i / 255;
-    toLin[i] = c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    toLin[i] = Math.pow(c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4), gamma);
   }
   const N = 4096;
   const toSrgb = new Uint8ClampedArray(N + 1);

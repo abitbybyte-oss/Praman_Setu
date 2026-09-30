@@ -129,7 +129,8 @@ export function buildTestRecord(inp: BuildInputs, seq: number, prevHash: string 
       card && d.corners
         ? {
             card_version: inp.cardVersion,
-            model: 'affine3x4',
+            model: card.calibration.model,
+            tone_gamma: card.calibration.tone_gamma,
             locate: 'corner-taps-homography/1',
             corners: Object.fromEntries(
               CORNER_ORDER.map((c) => [c, [toOrig(d.corners![c][0]), toOrig(d.corners![c][1])]])

@@ -173,7 +173,7 @@ Glare	In ROI: raw pixels with all channels ≥ 245 and high local contrast. Pale
 Card location	The officer taps the 4 corner markers of the printed card (layout in refdb.cards[v].layout, mm). A homography maps card mm → image px and locates each patch; taps are rejected if crossed, anticlockwise, too small or badly proportioned.	calibration.corners
 Patch sampling	Median over a k×k window centred on each located patch (k = sample_fraction × projected patch side, odd). Reject the tap if per-channel MAD exceeds a threshold ("tap nearer the centre of the patch").	calibration.patches[id] = {xy, rgb, mad} (xy in original pixel space)
 Linearise	sRGB inverse companding (piecewise, γ≈2.4).	—
-Colour correction	Least-squares 3×4 affine matrix M mapping measured linear RGB [r g b 1] to reference linear RGB for each patch, with a small ridge term. Card v1 has 6 patches (18 equations, 12 unknowns). Card v2 adds reagent-hue patches (§12).	calibration.matrix (12 numbers), model: "affine3x4"
+Colour correction	Tone step then least-squares 3×4 affine: each measured linear channel is raised to an exponent γ ∈ [0.4, 1.2], then matrix M maps [r g b 1] to reference linear RGB for each patch, with a small ridge term. γ is fitted per photo by grid search on the mean residual; it undoes the phone camera's own tone curve, which an affine map cannot (on a real phone photo of the printed card, black went from 15.8 to ~2–4 ΔE00). Card v1 has 6 patches (18 equations, 13 unknowns). Patch references are the card as printed; print_lab records what was sent to the printer when it differs. Card v2 adds reagent-hue patches (§12).	calibration.matrix (12 numbers), tone_gamma, model: "tone-affine3x4" (older records: "affine3x4", γ = 1)
 Residual	Apply M to each patch, convert to Lab, CIEDE2000 against the card reference.	residual_de00_mean, residual_de00_max
 Card validation	Checks in §6.2.	card_status, failed_checks[]
 ROI	Circle (centre + radius slider). Apply M per pixel → per-channel median → XYZ (D65) → Lab. Spread = p90 CIEDE2000 of pixels to the median.	measurement.{roi, lab, spread_de00_p90, area_px}
@@ -276,7 +276,7 @@ References always carry both record_id and record_hash, so a reference cannot si
   ],
   "evidence_image": { "n": 2, "sha256": "4be7…", "mime": "image/jpeg", "width": 4032, "height": 3024 },
   "calibration": {
-    "card_version": "FDTC-CARD-1", "model": "affine3x4",
+    "card_version": "FDTC-CARD-1", "model": "tone-affine3x4", "tone_gamma": 0.62,
     "patches": { "white": { "xy": [812, 1440], "rgb": [231, 229, 224], "mad": 1.2 } },
     "matrix": [1.08, -0.04, 0.01, 0.002, "…12 values"],
     "residual_de00_mean": 1.84, "residual_de00_max": 3.12,

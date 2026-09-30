@@ -18,7 +18,8 @@ const outDir = resolve(here, "dist");
 const CARD_VERSION = "FDTC-CARD-1";
 
 interface SourceCard {
-  patches: { id: (typeof PATCH_ORDER)[number]; lab: Lab }[];
+  /** `lab` is the reference as printed; `print_lab`, when set, is what to print. */
+  patches: { id: (typeof PATCH_ORDER)[number]; lab: Lab; print_lab?: Lab }[];
   layout: CardLayout;
 }
 
@@ -34,6 +35,11 @@ const refdb = JSON.parse(readFileSync(refdbPath, "utf8")) as {
 const card = refdb.cards[CARD_VERSION];
 if (!card?.layout) throw new Error(`${CARD_VERSION} has no layout in the Reference DB`);
 const L = card.layout;
+
+const printLab = (id: (typeof PATCH_ORDER)[number]): Lab => {
+  const q = card.patches.find((x) => x.id === id)!;
+  return q.print_lab ?? q.lab;
+};
 
 const hex = (lab: Lab) =>
   "#" +
@@ -55,7 +61,7 @@ function cardSvg(): string {
 
   for (const id of PATCH_ORDER) {
     const p = L.patches_mm[id];
-    const lab = card.patches.find((q) => q.id === id)!.lab;
+    const lab = printLab(id);
     parts.push(`<rect x="${p.x}" y="${p.y}" width="${p.size}" height="${p.size}" fill="${hex(lab)}"/>`);
     parts.push(
       `<text x="${p.x + p.size / 2}" y="${p.y + p.size + 1.8}" font-size="1.6" text-anchor="middle" fill="#333">${id.toUpperCase()}</text>`
@@ -95,7 +101,7 @@ const scaleBar = `<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="
 </svg>`;
 
 const swatchRows = PATCH_ORDER.map((id) => {
-  const lab = card.patches.find((q) => q.id === id)!.lab;
+  const lab = printLab(id);
   const rgb = labToSrgb8(lab).map((v) => Math.round(v));
   return `<tr><td><span class="sw" style="background:${hex(lab)}"></span>${id}</td><td>${lab.join(", ")}</td><td>${rgb.join(", ")}</td><td>${hex(lab)}</td></tr>`;
 }).join("");

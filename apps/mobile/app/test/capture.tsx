@@ -10,6 +10,7 @@ import { storeCapture } from '@/src/services/evidence';
 import { workingCopy } from '@/src/services/image';
 import { blurCheck } from '@/src/services/measure';
 import { Button, C, Note, Panel, Row, Screen } from '@/src/ui/kit';
+import { useShutter } from '@/src/ui/shutter';
 import { useSession } from '@/src/workflow/store';
 import { elapsedSeconds, mmss, windowState } from '@/src/workflow/timer';
 
@@ -28,6 +29,8 @@ export default function CaptureScreen() {
   const [error, setError] = useState<string | null>(null);
   const [, tick] = useState(0);
   const announced = useRef(false);
+  const shutter = useShutter();
+  const releaseShutter = shutter.release;
 
   // TMR-03/04: live countdown; recomputed from the stored start, so it is
   // right after backgrounding too (TMR-06).
@@ -54,8 +57,9 @@ export default function CaptureScreen() {
   useFocusEffect(
     useCallback(() => {
       setActive(true);
+      releaseShutter(); // back from the card screen: live again for a retake
       return () => setActive(false);
-    }, [])
+    }, [releaseShutter])
   );
 
   if (!draft) {
@@ -71,15 +75,24 @@ export default function CaptureScreen() {
     setError(null);
     setBlurry(null);
     setBusy(S.capture.capturing);
+    const t0 = Date.now();
+    const step = (s: string) => __DEV__ && console.log('[CAP]', s, Date.now() - t0, 'ms');
     try {
+      step('capture start');
       const photo = await photoOutput.capturePhotoToFile({}, {});
+      step('photo taken');
+      shutter.fire(photo.filePath);
       const takenAt = new Date().toISOString();
       const elapsed = draft.timer ? elapsedSeconds(draft.timer, Date.parse(takenAt)) : null;
       setBusy(S.capture.hashing);
       const stored = await storeCapture(photo.filePath, draft.recordId, draft.captures.length + 1);
+      step(`stored ${stored.bytes} bytes`);
       setBusy(S.capture.checkingSharpness);
       const wc = await workingCopy(stored.uri);
+      step('working copy ready');
       const blur = blurCheck(wc.img);
+      // TEMP diagnostics for printed-card calibration; remove after tuning.
+      if (__DEV__) console.log('[CAP] photo', wc.origWidth, 'x', wc.origHeight, 'sharpness', Math.round(blur.laplacian_variance), blur.blurry ? 'BLURRY' : 'ok');
       addCapture({
         uri: stored.uri,
         sha256: stored.sha256,
@@ -90,9 +103,13 @@ export default function CaptureScreen() {
         laplacian_variance: blur.laplacian_variance,
         elapsed_s: elapsed,
       });
-      if (blur.blurry) setBlurry(blur.laplacian_variance);
-      else router.push('/test/card');
+      if (blur.blurry) {
+        setBlurry(blur.laplacian_variance);
+        shutter.release();
+      } else router.push('/test/card');
     } catch (e) {
+      if (__DEV__) console.log('[CAP] error', e instanceof Error ? e.message : e);
+      shutter.release();
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
@@ -127,7 +144,7 @@ export default function CaptureScreen() {
       }>
       <View style={styles.preview}>
         {hasPermission ? (
-          <Camera style={StyleSheet.absoluteFill} device="back" isActive={active} outputs={[photoOutput]} />
+          <Camera style={StyleSheet.absoluteFill} device="back" isActive={active && !shutter.frozen} outputs={[photoOutput]} />
         ) : (
           <Text style={styles.permission}>{S.capture.permission}</Text>
         )}
@@ -138,6 +155,7 @@ export default function CaptureScreen() {
         <View pointerEvents="none" style={[styles.guide, styles.kitGuide]}>
           <Text style={styles.guideText}>{S.capture.guideKit}</Text>
         </View>
+        {shutter.overlay}
       </View>
 
       {draft.study ? (

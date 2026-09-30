@@ -2,6 +2,7 @@ import {
   calibrate,
   classify,
   CORNER_ORDER,
+  deltaE00,
   glareFraction,
   laplacianVariance,
   measureRoi,
@@ -57,6 +58,12 @@ export function calibrateCard(img: RgbaImage, taps: Record<CornerId, Point>): Ca
   const calibration = sampling.corners.ok
     ? calibrate(sampling.samples, ref, img)
     : calibrate({}, ref, img); // corners rejected: every check fails with ALL_MARKED
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    // TEMP diagnostics for printed-card calibration; remove after tuning.
+    console.log('[CARD] samples', JSON.stringify(Object.fromEntries(Object.entries(sampling.samples).map(([id, p]) => [id, { rgb: p.rgb, ok: p.ok, clip_high: p.clip_high }]))));
+    console.log('[CARD] residuals', JSON.stringify(calibration.residuals_de00));
+    console.log('[CARD] checks', JSON.stringify(calibration.checks.map((c) => `${c.pass ? 'ok ' : 'FAIL'} ${c.id}: ${c.detail}`)));
+  }
   const xs = CORNER_ORDER.map((c) => taps[c][0]);
   const ys = CORNER_ORDER.map((c) => taps[c][1]);
   const x = Math.min(...xs);
@@ -86,7 +93,7 @@ export function measureSample(
   opts: { outsideWindow?: boolean; retestOfInconclusive?: boolean } = {}
 ): SampleResult {
   const t = thresholds();
-  const roi = measureRoi(img, circle, card.calibration.matrix);
+  const roi = measureRoi(img, circle, card.calibration.matrix, card.calibration.tone_gamma);
   const glare = glareFraction(img, circle, roi.lab, roi.clipped_fraction);
   const min_area_px = minAreaPx(t.roi_min_radius_frac, Math.max(img.width, img.height));
   const quality = qualityScore(
@@ -118,6 +125,13 @@ export function measureSample(
     outside_window: opts.outsideWindow,
     retest_of_inconclusive: opts.retestOfInconclusive,
   });
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    // TEMP diagnostics for printed-card calibration; remove after tuning.
+    const r1 = (v: number) => Math.round(v * 10) / 10;
+    const dists = (kit(kitType).classes as KitClassDef[]).map((c) => `${c.id} ${r1(Math.min(...c.exemplars_lab.map((e) => deltaE00(roi.lab, e))))} (max ${c.radius_de00})`);
+    console.log('[ROI]', kitType, 'lab', roi.lab.map(r1), 'spread', r1(roi.spread_de00_p90), 'area', roi.area_px, '/', min_area_px, '| dist', dists.join(', '));
+    console.log('[ROI] ->', classification.outcome, JSON.stringify(classification.inconclusive_reasons), 'quality', quality.score, quality.band, 'card', card.calibration.card_status);
+  }
   return { roi, glare, quality, classification, min_area_px, glareHardGate: glare.glare_fraction >= t.glare_hard };
 }
 

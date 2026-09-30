@@ -111,7 +111,9 @@ export const testRecordSchema = z
     calibration: z
       .object({
         card_version: z.string(),
-        model: z.literal("affine3x4"),
+        // tone-affine3x4: tone_gamma is applied to linear RGB before the matrix; affine3x4 records predate it.
+        model: z.enum(["affine3x4", "tone-affine3x4"]),
+        tone_gamma: num.optional(),
         locate: z.literal("corner-taps-homography/1"),
         corners: z.object({ top_left: corner, top_right: corner, bottom_right: corner, bottom_left: corner }).strict(),
         corners_snapped: z.array(z.boolean()).length(4),

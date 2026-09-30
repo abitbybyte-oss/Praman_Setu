@@ -1,5 +1,5 @@
 {
-  "refdb_version": "2026.09-demo-1",
+  "refdb_version": "2026.09-demo-2",
   "simulated": true,
   "manufacturers": [
     "Demo Labs"
@@ -50,6 +50,11 @@
         {
           "id": "gray",
           "lab": [
+            55,
+            4.5,
+            0.5
+          ],
+          "print_lab": [
             55,
             0,
             0.5
@@ -333,6 +338,6 @@
   "signature": {
     "alg": "ES256",
     "key_id": "agency_refdb_2026",
-    "value": "Pc2guld1mm_y-Z99EPLBrjXi2rlb8GvCazUd-R3SpMcSK2ffD4G5NX3hIbILiyjTHQFnbG75UIkdtffCpqjqbw"
+    "value": "pRhOcu26PULRcC_ETcVtOlDGFieNuMJxeakIAr2vclNAKxg5cepkT9YtZxpYsiylqs_UdfMaJdO1H0-pvDjXOw"
   }
 }

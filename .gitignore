@@ -18,3 +18,11 @@ android/local.properties
 ios/Pods/
 *.log
 .scratch/
+
+# Personal notes and chat images (kept locally, not in the repo)
+/demo_script.txt
+/exp.txt
+/exp231.txt
+/techstack.txt
+/viva.txt
+/WhatsApp Image *.jpeg

@@ -79,7 +79,9 @@ export default function RecordScreen() {
   const sharePhoto = async () => {
     if (!photo) return;
     try {
-      await Sharing.shareAsync(photo, { mimeType: 'image/jpeg', dialogTitle: S.record.sharePhotoTitle });
+      // A generic type, so chat apps send it as a document: shared as image/jpeg,
+      // WhatsApp re-compresses it and the hash no longer matches the record.
+      await Sharing.shareAsync(photo, { mimeType: 'application/octet-stream', dialogTitle: S.record.sharePhotoTitle });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }

@@ -14,7 +14,10 @@ import {
 
 export interface CardPatch {
   id: "white" | "black" | "red" | "green" | "blue" | "gray";
+  /** The patch as printed: the colour-correction target. */
   lab: [number, number, number];
+  /** What the card generator asks the printer for, when that differs from `lab`. */
+  print_lab?: [number, number, number];
 }
 
 export type Point = [number, number];

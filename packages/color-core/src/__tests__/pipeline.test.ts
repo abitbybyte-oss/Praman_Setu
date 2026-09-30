@@ -146,6 +146,46 @@ describe("card validation", () => {
   });
 });
 
+describe("tone step (tone-affine3x4)", () => {
+  it("passes a real phone photo of the printed card that plain affine failed", () => {
+    // Patch medians from a phone capture of printed FDTC-CARD-1 (2026-09-25),
+    // with gray at its as-printed reference. Plain affine: black 15.8, gray 7.5 ΔE00.
+    const rgb: Record<PatchId, Vec3> = {
+      white: [171, 181, 203], black: [31, 32, 52], red: [119, 27, 51],
+      green: [34, 87, 58], blue: [19, 45, 119], gray: [77, 73, 95],
+    };
+    const s = Object.fromEntries(
+      PATCH_ORDER.map((id, i) => [id, { xy: [50 + i * 60, 50], rgb: rgb[id], mad: 1, clip_high: 0, clip_low: 0, outlier_fraction: 0, ok: true }])
+    ) as unknown as Record<PatchId, PatchSample>;
+    const printed = { ...CARD, patches: CARD.patches.map((p) => (p.id === "gray" ? { ...p, lab: [55, 4.5, 0.5] as Lab } : p)) };
+    const cal = calibrate(s, printed, { width: 1000, height: 1000 });
+    expect(cal.model).toBe("tone-affine3x4");
+    expect(cal.tone_gamma).toBeLessThan(0.8);
+    expect(cal.card_status).toBe("VALID");
+  });
+
+  it("undoes a camera tone curve and measures the sample correctly", () => {
+    const img = renderScene({ cast: WARM_CAST, noise: 2, sample: [48, 40, -22] });
+    // Camera tone curve on linear channels: v^(1/0.7).
+    const toSrgb = (v: number) => 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
+    const toLin = (c: number) => (c / 255 <= 0.04045 ? c / 255 / 12.92 : Math.pow((c / 255 + 0.055) / 1.055, 2.4));
+    for (let i = 0; i < img.data.length; i += 4)
+      for (let c = 0; c < 3; c++) img.data[i + c] = Math.round(toSrgb(Math.pow(toLin(img.data[i + c]), 1 / 0.7)));
+    const cal = calibrate(tapAll(img), CARD, img);
+    expect(cal.card_status).toBe("VALID");
+    expect(cal.tone_gamma).toBeGreaterThan(0.6);
+    expect(cal.tone_gamma).toBeLessThan(0.8);
+    const roi = measureRoi(img, ROI, cal.matrix, cal.tone_gamma);
+    expect(deltaE00(roi.lab, [48, 40, -22])).toBeLessThan(2);
+  });
+
+  it("keeps gamma near 1 when the camera has no tone curve", () => {
+    const img = renderScene({ cast: COOL_CAST, noise: 2, sample: [48, 40, -22] });
+    const cal = calibrate(tapAll(img), CARD, img);
+    expect(Math.abs(cal.tone_gamma - 1)).toBeLessThan(0.1);
+  });
+});
+
 describe("ROI measurement", () => {
   it("reports low spread on a uniform sample and high spread on two colours", () => {
     const uniform = run({ noise: 3, sample: [48, 40, -22] }).roi;

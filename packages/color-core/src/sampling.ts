@@ -1,5 +1,5 @@
 import { linearToLab, srgbToLinear, type Lab, type Vec3 } from "./color";
-import { applyAffine, type AffineMatrix } from "./ccm";
+import { applyAffine, applyTone, type AffineMatrix } from "./ccm";
 import { deltaE00 } from "./ciede2000";
 import { channelValues, circleIndices, median, percentile, rectIndices, type Circle, type RgbaImage } from "./image";
 
@@ -94,7 +94,7 @@ export const SPREAD_BLOCK = 4;
 /** Below this many whole blocks (a tiny ROI) fall back to per-pixel spread. */
 const MIN_BLOCKS = 12;
 
-export function measureRoi(img: RgbaImage, roi: Circle, matrix: AffineMatrix): RoiMeasurement {
+export function measureRoi(img: RgbaImage, roi: Circle, matrix: AffineMatrix, gamma = 1): RoiMeasurement {
   const idx = circleIndices(img, roi);
   const n = idx.length;
   if (n === 0) throw new Error("ROI contains no pixels");
@@ -107,7 +107,7 @@ export function measureRoi(img: RgbaImage, roi: Circle, matrix: AffineMatrix): R
     const g = img.data[o + 1];
     const b = img.data[o + 2];
     if (r >= 254 || g >= 254 || b >= 254 || r <= 1 || g <= 1 || b <= 1) clipped++;
-    lin[k] = applyAffine(matrix, [srgbToLinear(r), srgbToLinear(g), srgbToLinear(b)]);
+    lin[k] = applyAffine(matrix, applyTone([srgbToLinear(r), srgbToLinear(g), srgbToLinear(b)], gamma));
   }
 
   const med: Vec3 = [

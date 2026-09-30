@@ -10,6 +10,7 @@ import { decodeQrFromFile } from '@/src/services/image';
 import { checkKitQr } from '@/src/services/kitqr';
 import { loadRefdb } from '@/src/services/refdb';
 import { Button, C, Note, Screen } from '@/src/ui/kit';
+import { useShutter } from '@/src/ui/shutter';
 import { useSession } from '@/src/workflow/store';
 
 /** KIT-03: photograph the kit label and decode its QR in JS. The photo is
@@ -21,6 +22,7 @@ export default function ScanScreen() {
   const [active, setActive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const shutter = useShutter();
 
   useEffect(() => {
     if (!hasPermission) requestPermission();
@@ -36,20 +38,18 @@ export default function ScanScreen() {
   const scan = async () => {
     setBusy(true);
     setError(null);
+    let uri: string | null = null;
     try {
       const photo = await photoOutput.capturePhotoToFile({}, {});
-      const uri = photo.filePath.startsWith('file://') ? photo.filePath : `file://${photo.filePath}`;
+      uri = photo.filePath.startsWith('file://') ? photo.filePath : `file://${photo.filePath}`;
+      shutter.fire(uri);
       const raw = await decodeQrFromFile(uri);
-      try {
-        new File(uri).delete();
-      } catch {
-        // temp file; the OS clears it anyway
-      }
       if (raw === null) {
         setError(S.scan.notFound);
         return;
       }
       const result = checkKitQr(raw, loadRefdb().db);
+      if (__DEV__) console.log('[QR] raw', JSON.stringify(raw), '->', result.status, result.problem);
       // KIT-05: a rejected kit goes to the audit log, never the evidence ledger.
       if (result.status !== 'VALID') audit('KIT_REJECTED', `${result.status} ${result.problem ?? ''} ${result.qr_sha256}`);
       setPendingKit(result);
@@ -58,6 +58,14 @@ export default function ScanScreen() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
+      shutter.release();
+      if (uri) {
+        try {
+          new File(uri).delete();
+        } catch {
+          // temp file; the OS clears it anyway
+        }
+      }
     }
   };
 
@@ -65,11 +73,12 @@ export default function ScanScreen() {
     <Screen title={S.scan.title} scroll={false} footer={<Button label={busy ? S.scan.decoding : S.scan.scan} onPress={scan} busy={busy} disabled={!hasPermission} />}>
       <View style={styles.preview}>
         {hasPermission ? (
-          <Camera style={StyleSheet.absoluteFill} device="back" isActive={active} outputs={[photoOutput]} />
+          <Camera style={StyleSheet.absoluteFill} device="back" isActive={active && !shutter.frozen} outputs={[photoOutput]} />
         ) : (
           <Text style={styles.permission}>{S.capture.permission}</Text>
         )}
         <View pointerEvents="none" style={styles.frame} />
+        {shutter.overlay}
       </View>
       <Note>{S.scan.help}</Note>
       {error ? <Note tone="bad">{error}</Note> : null}

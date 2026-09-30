@@ -40,7 +40,8 @@ export default function RoiScreen() {
   }, [cap]);
 
   const matrix = draft?.card?.calibration.matrix;
-  const view = useMemo(() => (wc && matrix?.length ? correctedView(wc, matrix) : wc), [wc, matrix]);
+  const gamma = draft?.card?.calibration.tone_gamma ?? 1;
+  const view = useMemo(() => (wc && matrix?.length ? correctedView(wc, matrix, gamma) : wc), [wc, matrix, gamma]);
 
   if (!draft || !cap || !guards.cardValid(draft)) {
     return (

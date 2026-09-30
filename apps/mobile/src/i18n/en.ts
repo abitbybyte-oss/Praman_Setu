@@ -118,7 +118,7 @@ export const en = {
   },
   scan: {
     title: 'Scan kit QR',
-    help: 'Fill the frame with the QR code on the kit label, hold steady, then tap Scan.',
+    help: 'Hold the phone 10–15 cm from the kit label so its QR code sits inside the frame, hold steady for focus, then tap Scan.',
     scan: 'Scan',
     decoding: 'Reading QR…',
     notFound: 'No QR code found. Move closer, avoid glare, and try again.',

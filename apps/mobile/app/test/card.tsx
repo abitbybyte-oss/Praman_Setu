@@ -52,6 +52,8 @@ export default function CardScreen() {
   const onTap = (raw: Point) => {
     if (taps.length >= 4 || !wc) return;
     const s = snapCorner(wc.img, raw);
+    // TEMP diagnostics for printed-card calibration; remove after tuning.
+    if (__DEV__) console.log('[CARD] tap', CORNER_ORDER[taps.length], raw.map(Math.round), '->', s.point.map(Math.round), s.snapped ? 'snapped' : 'NOT SNAPPED');
     const next = [...taps, { p: s.point, snapped: s.snapped }];
     setTaps(next);
     if (next.length === 4) {
@@ -59,6 +61,7 @@ export default function CardScreen() {
       try {
         setCard(corners, next.map((t) => t.snapped), calibrateCard(wc.img, corners));
       } catch (e) {
+        if (__DEV__) console.log('[CARD] error', e instanceof Error ? e.message : e);
         setError(e instanceof Error ? e.message : String(e));
       }
     }

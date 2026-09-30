@@ -48,6 +48,13 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

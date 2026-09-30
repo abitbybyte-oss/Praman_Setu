@@ -1,5 +1,5 @@
 {
-  "refdb_version": "2026.09-demo-1",
+  "refdb_version": "2026.09-demo-2",
   "simulated": true,
   "manufacturers": ["Demo Labs"],
   "cards": {
@@ -10,7 +10,7 @@
         { "id": "red", "lab": [44.0, 60.0, 38.0] },
         { "id": "green", "lab": [55.0, -45.0, 30.0] },
         { "id": "blue", "lab": [34.0, 14.0, -48.0] },
-        { "id": "gray", "lab": [55.0, 0.0, 0.5] }
+        { "id": "gray", "lab": [55.0, 4.5, 0.5], "print_lab": [55.0, 0.0, 0.5] }
       ],
       "layout": {
         "width_mm": 110,
